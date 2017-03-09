@@ -13,6 +13,7 @@ module Pos.CLI
        , sscAlgoParser
 
        -- | CLI options and flags
+       , RateLimiting (..)
        , CommonArgs (..)
        , commonArgsParser
        , optionalJSONPath
@@ -106,6 +107,12 @@ readLoggerConfig = maybe (return defaultLoggerConfig) parseLoggerConfig
 ----------------------------------------------------------------------------
 -- ClI Options
 ----------------------------------------------------------------------------
+
+data RateLimiting
+    = NoRateLimitingUnbounded
+    | NoRateLimitingFair
+    | RateLimitingBlocking !Int
+    deriving (Read,Show)
 
 data CommonArgs = CommonArgs
     { dhtExplicitInitial :: !Bool
