@@ -9,12 +9,13 @@ module WalletOptions
        , optsInfo
        ) where
 
+import           Data.List              (unlines)
 import           Options.Applicative    (CommandFields, Mod, Parser, ParserInfo, auto,
                                          command, fullDesc, help, helper, info, long,
                                          metavar, option, option, progDesc, subparser,
                                          switch, value)
 import           Serokell.Util.OptParse (strOption)
-import           Universum
+import           Universum              hiding (unlines)
 
 
 import qualified Pos.CLI                as CLI
@@ -98,9 +99,13 @@ optionsParser = do
         actionParser
     woRateLimiting <- option auto $
         long "rate-limiting" <>
-        metavar "STRATEGY" <>
-        value CLI.NoRateLimitingFair <>
-        help "Rate-limiting strategy"
+        metavar "NoRateLimitingUnbounded | NoRateLimitingFair | RateLimitingBlocking BYTES" <>
+        value CLI.NoRateLimitingUnbounded <>
+        help (unlines [ "Rate-limiting strategy."
+                      , "  NoRateLimitingUnbounded: uses an unbounded queue for requests."
+                      , "  NoRateLimitingFair: ensures fairness for requests from different peers."
+                      , "  RateLimitingBlocking BYTES: ensures fairness, and will block requests from a peer"
+                      , "    if it already has more than BYTES in-flight bytes."])
 
     pure WalletOptions{..}
 
