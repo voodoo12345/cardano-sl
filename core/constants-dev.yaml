@@ -23,7 +23,7 @@ kademliaDumpInterval: 4
 neighboursSendThreshold: 2
 networkDiameter: 3
 networkConnectionTimeout: 2000
-networkReceiveTimeout: 5000
+networkReceiveTimeout: 15000
 
 ## P2P Security
 mdNoBlocksSlotThreshold: 3 # should be less than 2 * k
