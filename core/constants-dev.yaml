@@ -6,7 +6,7 @@ genesisN: 12
 genesisSlotDurationSec: 7
 genesisMaxBlockSize: 2000000
 genesisMaxHeaderSize: 200000
-genesisMaxTxSize: 4096 # 4 Kb
+genesisMaxTxSize: 1048576 # 1 MB # 4096 # 4 Kb
 maxReqSize: 100 # 100 bytes
 maxInvSize: 100 # 100 bytes
 genesisMpcThd: 0.01 # 1% of stake
