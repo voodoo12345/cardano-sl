@@ -93,6 +93,9 @@ hasSender UnsafeTx {..} addr = anyM hasCorrespondingOutput $ toList _txInputs
 data TxHistoryEntry = THEntry
     { _thTxId       :: !TxId
     , _thTx         :: !Tx
+    -- | Each history entry is associated with an address (see
+    -- '_wsHistoryCache'); this bool is 'True' if the transaction uses some
+    -- address's funds, and 'False' if it adds funds to that address.
     , _thIsOutput   :: !Bool
     , _thDifficulty :: !(Maybe ChainDifficulty)
     } deriving (Show, Eq, Generic)
@@ -102,8 +105,12 @@ makeLenses ''TxHistoryEntry
 -- | Type of monad used to deduce history
 type TxSelectorT m = UtxoStateT (MaybeT m)
 
--- | Select transactions related to given address. `Bool` indicates
--- whether the transaction is outgoing (i. e. is sent from given address)
+-- | Select transactions related to given address (i.e. which have given
+-- address in inputs or outputs).
+--
+-- This operation has to be done in 'TxSelectorT' (i.e. 'UtxoStateT') because
+-- inputs refer to other transactions' outputs and thus we need access to
+-- UTXO to look up transaction outputs by transaction ids.
 getRelatedTxs
     :: Monad m
     => Address

@@ -23,6 +23,7 @@ import           Control.Monad                 (replicateM_)
 import           Control.Monad.Catch           (SomeException, catches, try)
 import qualified Control.Monad.Catch           as E
 import           Control.Monad.State           (runStateT)
+import           Control.Monad.Trans.Maybe     (runMaybeT)
 import           Data.Default                  (Default (def))
 import           Data.List                     (elemIndex, (!!))
 import qualified Data.List.NonEmpty            as NE
@@ -45,15 +46,16 @@ import           System.Wlog                   (logDebug, logError, logInfo)
 
 import           Data.ByteString.Base58        (bitcoinAlphabet, decodeBase58)
 import           Pos.Aeson.ClientTypes         ()
-import           Pos.Client.Txp.History        (TxHistoryAnswer (..), TxHistoryEntry (..))
+import           Pos.Client.Txp.History        (TxHistoryAnswer (..), TxHistoryEntry (..),
+                                                getRelatedTxs)
 import           Pos.Communication             (OutSpecs, SendActions, hoistSendActions,
                                                 sendTxOuts, submitRedemptionTx, submitTx)
 import           Pos.Constants                 (curSoftwareVersion, isDevelopment)
 import           Pos.Core                      (Address, Coin, addressF, coinF,
                                                 decodeTextAddress, makePubKeyAddress,
                                                 mkCoin)
-import           Pos.Crypto                    (PassPhrase, aesDecrypt, deriveAesKeyBS,
-                                                encToPublic, hash,
+import           Pos.Crypto                    (PassPhrase, WithHash (..), aesDecrypt,
+                                                deriveAesKeyBS, encToPublic, hash,
                                                 redeemDeterministicKeyGen, withSafeSigner,
                                                 withSafeSigner)
 import           Pos.DB.Limits                 (MonadDBLimits)
@@ -61,12 +63,16 @@ import           Pos.DHT.Model                 (getKnownPeers)
 import           Pos.Reporting.MemState        (MonadReportingMem (..), rcReportServers)
 import           Pos.Reporting.Methods         (sendReport, sendReportNodeNologs)
 import           Pos.Ssc.Class                 (SscHelpersClass)
-import           Pos.Txp.Core                  (TxOut (..), TxOutAux (..))
+import           Pos.Txp.Core                  (Tx, TxAux, TxDistribution, TxId,
+                                                TxOut (..), TxOutAux (..), TxWitness)
+import           Pos.Txp.MemState.Class        (getLocalTxs)
+import           Pos.Txp.Toil.Utxo.Pure        (evalUtxoStateT)
 import           Pos.Util                      (maybeThrow)
 import           Pos.Util.BackupPhrase         (BackupPhrase, safeKeysFromPhrase, toSeed)
 import           Pos.Util.UserSecret           (readUserSecret, usKeys)
 import           Pos.Wallet.KeyStorage         (KeyError (..), MonadKeys (..),
                                                 addSecretKey)
+import           Pos.Wallet.State              (MonadWalletDB, getUtxo)
 import           Pos.Wallet.WalletMode         (WalletMode, applyLastUpdate,
                                                 blockchainSlotDuration, connectedPeers,
                                                 getBalance, getTxHistory,
@@ -392,11 +398,20 @@ getHistory
 getHistory cAddr skip limit = do
     (minit, cachedTxs) <- transCache <$> getHistoryCache cAddr
 
-    TxHistoryAnswer {..} <- flip (untag @ssc getTxHistory) minit
-        =<< decodeCAddressOrFail cAddr
+    addr <- decodeCAddressOrFail cAddr
+    TxHistoryAnswer {..} <- (untag @ssc getTxHistory) addr minit
+
+    let fromWH :: (TxId, TxAux) -> (WithHash Tx, TxWitness, TxDistribution)
+        fromWH (id, (tx, wit, distr)) = (WithHash tx id, wit, distr)
+    utxo <- getUtxo
+    mempoolTxs <- map fromWH <$> getLocalTxs
+    -- transactions from the mempool that are related to our address
+    ourMempoolTxs <- fmap (fromMaybe []) . runMaybeT .
+                     flip evalUtxoStateT utxo $
+                         getRelatedTxs addr mempoolTxs
 
     -- Add allowed portion of result to cache
-    let fullHistory = taHistory <> cachedTxs
+    let fullHistory = ourMempoolTxs <> taHistory <> cachedTxs
         lenHistory = length taHistory
         cached = drop (lenHistory - taCachedNum) taHistory
 

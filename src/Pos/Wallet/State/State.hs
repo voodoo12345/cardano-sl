@@ -36,8 +36,12 @@ import           Pos.Wallet.State.Acidic     (WalletState, closeState, openMemSt
 import           Pos.Wallet.State.Acidic     as A
 import           Pos.Wallet.State.Storage    (Block', Storage)
 
--- | MonadWalletDB stands for monad which is able to get web wallet state
+-- | MonadWalletDB stands for monad which is able to get wallet state
 class Monad m => MonadWalletDB m where
+    -- | Get wallet state. This state is __different__ from web wallet state,
+    -- even though they're named the same.
+    --
+    -- TODO: rename the other 'WalletState' to 'WalletWebState' or something.
     getWalletState :: m WalletState
 
 -- | Instances for common transformers
