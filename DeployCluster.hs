@@ -75,6 +75,7 @@ deploymentScript Options{..} = do
     genesisInfo          = "genesis.info"
     nodeFilesRoot        = "/var/lib/cardano-node/"
     nodeUser             = "cardano-node"
+    runMainCardanoScript = "./CardanoCSL.hs"
     clusterName          = map toLower issueId
     clusterRoot          = deployerUserHome </> clusterName
     newConfigYAML        = if itIsProductionCluster then prodConfigName else devConfigName
@@ -207,7 +208,8 @@ deploymentScript Options{..} = do
     removeNodesDatabases = do
         echo ""
         echo ">>> Remove databases on all nodes..."
-        runCommandOnDeployer $ "nixops ssh-for-each -d " <> clusterName <> " 'rm -R " <> nodeFilesRoot <> "node-db'"
+        runCommandOnDeployer $
+            "nixops ssh-for-each -d " <> clusterName <> " 'rm -R " <> nodeFilesRoot <> "node-db'"
 
     setSystemStartTime = do
         echo ""
@@ -218,13 +220,19 @@ deploymentScript Options{..} = do
     cluster action = do
         echo ""
         echo ">>>" (show action) "cluster..."
-        runCommandOnDeployer $ "cd " <> clusterRoot <> " && ./CardanoCSL.hs -c " <> newConfigYAML <> " " <> show action
+        runCommandOnDeployer $
+            "cd " <> clusterRoot <> " && " <> runMainCardanoScript <> " -c " <> newConfigYAML <> " " <> show action
 
     showFinalInfo = do
-        echo "Done."
-        echo "Now you can:"
+        echo ""
+        echo ">>> Done. Now you can:"
         echo " 1. View information about deployment: nixops info -d" clusterName
         echo " 2. SSH to cluster's nodes, for example: nixops ssh -d" clusterName "node1"
+        echo ""
+        echo "If you want to destroy this deployment, run:"
+        echo ""
+        echo "$" runMainCardanoScript "-c" newConfigYAML (show Destroy)
+        echo "$ nixops delete -d" clusterName
 
 -- | What can we do with cluster?
 data ClusterAction 
@@ -233,6 +241,7 @@ data ClusterAction
     | Deploy
     | Start
     | Stop
+    | Destroy
 
 instance Show ClusterAction where
     show Create  = "create"
@@ -240,6 +249,7 @@ instance Show ClusterAction where
     show Deploy  = "deploy"
     show Start   = "start"
     show Stop    = "stop"
+    show Destroy = "destroy"
 
 -- | CLI-options for deployer.
 data Options = Options
