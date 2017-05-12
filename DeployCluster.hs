@@ -51,10 +51,10 @@ deploymentScript Options{..} = do
             echo ""
             echo "It's dev-cluster, we shouldn't generate new keys and copy them to nodes."
             preparingGenerateScript
-    {-
     generateDeployment
     cluster Create
     cluster Build
+    {-
     prepareNodesForDeployment
     cluster Deploy
     when itIsProductionCluster copyGeneratedKeysToNodes
