@@ -34,8 +34,8 @@ deploymentScript Options{..} = do
     echo " 2. current durectory is a root of 'cardano-sl' repository,"
     echo " 3. you're using branch corresponding to an issue the new cluster is for,"
     echo " 4. you already changed fundamental constants for a new cluster in 'cardano-sl/core/constants-*.yaml', if required."
-    echo "yes/no?"
-    continueIfYes
+    echo "Press Enter to continue, type 'exit' to stop script."
+    continueIfNotExit
     showInitialInfoAboutCluster
     when itIsProductionCluster buildCardanoSLInProdMode
     makeSureClusterNameIsUnique
@@ -94,8 +94,8 @@ deploymentScript Options{..} = do
     getCurrentBranch = head <$> strings (git "branch" $| sed "-n" "-e" "s/^\\* \\(.*\\)/\\1/p")   
     getCurrentDate   = head <$> strings (date "+%F")
 
-    continueIfYes =
-        liftIO getLine >>= \maybeYes -> unless (maybeYes == "yes") . liftIO . die $ "Abort."
+    continueIfNotExit =
+        liftIO getLine >>= \inputed -> when (inputed == "exit") . liftIO . die $ "Abort."
 
     showInitialInfoAboutCluster = do
         nameOfCurrentBranch <- getCurrentBranch
@@ -172,9 +172,8 @@ deploymentScript Options{..} = do
         runCommandOnDeployer $ replaceCardanoSLCommitWith currentCommit
         echo ""
         echo ">>> If you need to update commits for other packages, please do it now."
-        echo "After you finished (or if you don't need to change commits), type 'yes'. Type 'no' to abort script."
-        echo "yes/no?"
-        continueIfYes
+        echo "After you finished (or if you don't need to change commits) press Enter. Type 'exit' to stop script."
+        continueIfNotExit
       where
         replaceCardanoSLCommitWith commit =
             "sed -i -e 's/cardano-sl\\.git\\([ ]*\\)\\([a-f0-9][a-f0-9]*\\)/cardano-sl\\.git " <> commit <> "/g' " <> pathToGenerateScript
@@ -201,9 +200,8 @@ deploymentScript Options{..} = do
         echo ""
         echo ">>> Now you have to prepare cluster's nodes for deployment. This step cannot be automated because of"
         echo "specific settings for AWS regions for nodes, elastic IPs, etc. So please go to cluster, open" pathToCardanoNix
-        echo "file and (un)comment corresponding 'genAttrs'-sections. After you finished, type 'yes'. Type 'no' to abort script."
-        echo "yes/no?"
-        continueIfYes
+        echo "file and (un)comment corresponding 'genAttrs'-sections. After you finished press Enter. Type 'exit' to stop script."
+        continueIfNotExit
     
     removeNodesDatabases = do
         echo ""
