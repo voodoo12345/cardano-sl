@@ -156,14 +156,14 @@ deploymentScript Options{..} = do
         git "add" genesisBin genesisInfo
         git "commit" "-m" ("[" <> issueId <> "] Update genesis.* files for new keys.")
         getCurrentBranch >>= git "push" "origin"
-      where
 
     uploadGeneratedKeysToCluster = do
         echo ""
         echo "Upload generated keys to new cluster (after deployment these keys will be copied to nodes)..."
         runCommandOnDeployer $ "cd " <> clusterRoot <> " && CUR_DATE=$(date +%F) && mkdir " <> genesisKeysDirPrefix <> "$CUR_DATE"
         currentDate <- getCurrentDate
-        scp "-r" (genesisKeysDirPrefix <> currentDate <> "/nodes") (deployerServer <> ":" <> clusterRoot)
+        scp "-r" (genesisKeysDirPrefix <> currentDate </> "nodes")
+                 (deployerServer <> ":" <> clusterRoot </> genesisKeysDirPrefix <> currentDate)
 
     copyGeneratedKeysToNodes = do
         echo ""
