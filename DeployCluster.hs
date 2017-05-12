@@ -146,7 +146,9 @@ deploymentScript Options{..} = do
     commitAndPushNewGenesisFiles = do
         echo ""
         echo "Commit and push updated genesis.* files..."
-        git "commit" "-a" "-m" ("[" <> issueId <> "] Update genesis.* files for new keys.")
+        cp (genesisKeysDirPrefix <> "*/genesis.*") "."
+        git "add" "genesis.*"
+        git "commit" "-m" ("[" <> issueId <> "] Update genesis.* files for new keys.")
         getCurrentBranch >>= git "push" "origin"
 
     uploadGeneratedKeysToCluster = do
