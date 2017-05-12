@@ -1,5 +1,5 @@
 Running command: stack exec cardano-keygen -- --genesis-file genesis.bin -f secrets/secret-{}.key -m 3 -n 120 --richmen-share 0.94 --testnet-stake 19072918462000000 --utxo-file /home/denis/cardano-sl/util-scripts/../util-scripts/avvm-files/utxo-dump-last-new.json --randcerts --blacklisted /home/denis/cardano-sl/util-scripts/../util-scripts/avvm-files/full_blacklist.js --fake-avvm-seed-pattern avvm/fake-{}.seed --fake-avvm-entries 100
-USING RANDOM STAKEHOLDER ID, WRITING KEY TO redeemingHolderKey15616
+USING RANDOM STAKEHOLDER ID, WRITING KEY TO redeemingHolderKey71751
 NOT FOR PRODUCTION USAGE, ONLY FOR TESTING
 IF YOU INTEND TO GENERATE GENESIS.BIN FOR PRODUCTION, STOP RIGHT HERE AND USE `--fileholder <path to secret>` OPTION. THIS IS SERIOUS.
 Removing 101 entries from utxo (out of 188 total entries in the blacklist)
@@ -7,7 +7,7 @@ Total avvm stake after applying blacklist: 25927070538000000
 123 keyfiles are generated
 Total testnet genesis stake: RichPoorStakes {sdRichmen = 3, sdRichStake = Coin {getCoin = 5976181118093333}, sdPoor = 120, sdPoorStake = Coin {getCoin = 9536459231000}}
 100 fake avvm seeds are generated
-testnet genesis created successfully. First 30 addresses: [PubKeyAddress 76d692f3330e15ca82a29143fdc126fb254d1e6e76c3f723492abd17 (attrs: {}), PubKeyAddress 85012fad5b8daba44a80619125e1768f46aa3a64e5fc4e27b55e9c40 (attrs: {}), PubKeyAddress afa8f60ab4ea1ba77dba6f7b48123a95fe28d890581efb12b06bec86 (attrs: {}), PubKeyAddress 023a96a259f1bed26df22a112a671ec79a25d1983e62af0f975c190a (attrs: {}), PubKeyAddress 7ad9b122b89a217774f8b03ff24e96cab37f06c57709787166e004c3 (attrs: {}), PubKeyAddress 8c237eae9962d71b0392615cb04ed9c6f778ad4caf434aa2a047b5bd (attrs: {}), PubKeyAddress a9216ddb355a55751bb4ef1ce2e0b0c80e3afa5d2c54f0d18080a365 (attrs: {}), PubKeyAddress cbcf7a199fd792a9d4ace29361c18ddedccc0b3d989b1236052a8a75 (attrs: {}), PubKeyAddress fb21d3b1d78bd620ea2d5aa06f310e5f503e5b119606274c65792bcf (attrs: {}), PubKeyAddress 6b6ac6bffe34fd15dd6dfbce059d35daad8f241a4727eef93678a61d (attrs: {})] distr: Just (RichPoorStakes {sdRichmen = 3, sdRichStake = Coin {getCoin = 5976181118093333}, sdPoor = 120, sdPoorStake = Coin {getCoin = 9536459231000}})
+testnet genesis created successfully. First 30 addresses: [PubKeyAddress 437937db1731c40cdc57b60c936bccdc3ec6e3d3e172a17dc442cbd7 (attrs: {}), PubKeyAddress 39f44e7634264af18e89c5792243989f8e70bbf68fbeadb5059531e7 (attrs: {}), PubKeyAddress 4634e404e9dcca2be62c4efc23f3d92bd945e2c5e5c3a84a0153e4f2 (attrs: {}), PubKeyAddress 9893abf07cbc93b9c5fa670dd1e29f1fab82140c22a7ac5a049649c2 (attrs: {}), PubKeyAddress 85ecb693f5f38f1d0e46d2246c5bb5efd4b6d151ba4b21c64353fbbb (attrs: {}), PubKeyAddress a9e49de1d18907e02922b8eee24e9bcd8e77ca4dff5da8b1b8f23409 (attrs: {}), PubKeyAddress 0cfccfd7e759f80abea3c27948b98d0e8f04a1ceee7befe5b6c0e68d (attrs: {}), PubKeyAddress a5cbb3b1b970380a785deefba13cfcb7161e84a567f4a45f9f4186b5 (attrs: {}), PubKeyAddress 1ef2cb423d6621fcdfec7caa7ffe82e875b53cf85d7971ed8af9e8ce (attrs: {}), PubKeyAddress 94671657f2df2f5afc3b0c504c72afc01109e152836d7ef4ccc6dd99 (attrs: {})] distr: Just (RichPoorStakes {sdRichmen = 3, sdRichStake = Coin {getCoin = 5976181118093333}, sdPoor = 120, sdPoorStake = Coin {getCoin = 9536459231000}})
 [generating VSS keys for tests...]
 [generating keys for tests...]
 genesis.bin generated successfully
@@ -15,4 +15,4 @@ genesis.bin generated successfully
 'secrets/secret-1.key.primary' -> 'nodes/key1'
 'secrets/secret-2.key.primary' -> 'nodes/key2'
 'secrets/secret-3.key.primary' -> 'nodes/key3'
-'redeemingHolderKey15616' -> 'nodes/key0'
+'redeemingHolderKey71751' -> 'nodes/key0'

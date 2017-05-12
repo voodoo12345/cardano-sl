@@ -54,7 +54,6 @@ deploymentScript Options{..} = do
     generateDeployment
     cluster Create
     cluster Build
-    {-
     prepareNodesForDeployment
     cluster Deploy
     when itIsProductionCluster copyGeneratedKeysToNodes
@@ -63,7 +62,7 @@ deploymentScript Options{..} = do
     cluster Stop
     cluster Deploy
     cluster Start
-    -}
+    showFinalInfo
   where
     -- Basic settings --------------------------------------------------------------------
     nixConfig            = "config.nix"
@@ -159,8 +158,8 @@ deploymentScript Options{..} = do
     uploadGeneratedKeysToCluster = do
         echo ""
         echo ">>> Upload generated keys to new cluster (after deployment these keys will be copied to nodes)..."
-        runCommandOnDeployer $ "cd " <> clusterRoot <> " && CUR_DATE=$(date +%F) && mkdir " <> genesisKeysDirPrefix <> "$CUR_DATE"
         currentDate <- getCurrentDate
+        runCommandOnDeployer $ "cd " <> clusterRoot <> " && mkdir " <> genesisKeysDirPrefix <> currentDate
         scp "-r" (genesisKeysDirPrefix <> currentDate </> "nodes")
                  (deployerServer <> ":" <> clusterRoot </> genesisKeysDirPrefix <> currentDate)
  
@@ -169,14 +168,14 @@ deploymentScript Options{..} = do
         echo ">>> Update 'cardano-sl' commit in" pathToGenerateScript "..."
         currentCommit <- getCurrentCommit
         echo "    Current commit is" currentCommit
-        runCommandOnDeployer $ replaceCardanoSLCommit currentCommit
+        runCommandOnDeployer $ replaceCardanoSLCommitWith currentCommit
         echo ""
         echo ">>> If you need to update commits for other packages, please do it now."
         echo "After you finished (or if you don't need to change commits), type 'yes'. Type 'no' to abort script."
         echo "yes/no?"
         continueIfYes
       where
-        replaceCardanoSLCommit commit =
+        replaceCardanoSLCommitWith commit =
             "sed -i -e 's/cardano-sl\\.git\\([ ]*\\)\\([a-f0-9][a-f0-9]*\\)/cardano-sl\\.git " <> commit <> "/g' " <> pathToGenerateScript
 
     generateDeployment = do
@@ -187,10 +186,9 @@ deploymentScript Options{..} = do
     copyGeneratedKeysToNodes = do
         echo ""
         echo ">>> Copy generated keys from a cluster to all nodes..."
+        currentDate <- getCurrentDate
         runCommandOnDeployer $ concat $
-            intersperse "&&" [ "cd " <> clusterRoot
-                             , "CUR_DATE=$(date +%F)"
-                             , "cd " <> genesisKeysDirPrefix <> "$CUR_DATE"
+            intersperse "&&" [ "cd " <> clusterRoot </> genesisKeysDirPrefix <> currentDate
                              ,    "for i in {0.." <> show numberOfNodes <> "};"
                                <> "do nixops scp -d " <> clusterName <> " --to node$i key$((i+1)) " <> nodeFilesRoot <> "key$((i+1)).sk;"
                                <> "done"
@@ -214,12 +212,19 @@ deploymentScript Options{..} = do
     setSystemStartTime = do
         echo ""
         echo ">>> Set system start time..."
-        runCommandOnDeployer $ "START=$(( $(date +%s)+120 )) && sed -i \"s/systemStart[ ]*=[ ]*[0-9]*;/systemStart = $START;/g\" " <> pathToNixConfig
+        runCommandOnDeployer $
+            "START=$(( $(date +%s)+120 )) && sed -i \"s/systemStart[ ]*=[ ]*[0-9]*;/systemStart = $START;/g\" " <> pathToNixConfig
 
     cluster action = do
         echo ""
         echo ">>>" (show action) "cluster..."
         runCommandOnDeployer $ "cd " <> clusterRoot <> " && ./CardanoCSL.hs -c " <> newConfigYAML <> " " <> show action
+
+    showFinalInfo = do
+        echo "Done."
+        echo "Now you can:"
+        echo " 1. View information about deployment: nixops info -d" clusterName
+        echo " 2. SSH to cluster's nodes, for example: nixops ssh -d" clusterName "node1"
 
 -- | What can we do with cluster?
 data ClusterAction 
