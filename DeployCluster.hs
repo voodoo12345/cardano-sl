@@ -152,8 +152,8 @@ deploymentScript Options{..} = do
     uploadGeneratedKeysToCluster = do
         echo ""
         echo "Upload generated keys to new cluster (after deployment these keys will be copied to nodes)..."
-        runCommandOnDeployer $ "cd " <> clusterRoot <> " && mkdir " <> genesisKeysDirPrefix <> "`date +%F`"
-        scp "-r" (genesisKeysDirPrefix <> "`date +%F`/nodes") (deployerServer <> ":" <> clusterRoot)
+        runCommandOnDeployer $ "cd " <> clusterRoot <> " && CUR_DATE=$(date +%F) && mkdir " <> genesisKeysDirPrefix <> "$CUR_DATE"
+        scp "-r" (genesisKeysDirPrefix <> "*/nodes") (deployerServer <> ":" <> clusterRoot)
 
     copyGeneratedKeysToNodes = do
         echo ""
