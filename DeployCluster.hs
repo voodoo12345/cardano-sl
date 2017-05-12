@@ -72,6 +72,8 @@ deploymentScript Options{..} = do
     generateScript       = "generate.sh"
     cardanoNix           = "deployments/cardano.nix"
     genesisKeysDirPrefix = "genesis-qanet-"
+    genesisBin           = "genesis.bin"
+    genesisInfo          = "genesis.info"
     nodeFilesRoot        = "/var/lib/cardano-node/"
     nodeUser             = "cardano-node"
     clusterName          = map toLower issueId
@@ -90,6 +92,7 @@ deploymentScript Options{..} = do
     
     getCurrentCommit = head <$> strings (git "rev-parse" "HEAD")
     getCurrentBranch = head <$> strings (git "branch" $| sed "-n" "-e" "s/^\\* \\(.*\\)/\\1/p")   
+    getCurrentDate   = head <$> strings (date "+%F")
 
     continueIfYes =
         liftIO getLine >>= \maybeYes -> unless (maybeYes == "yes") . liftIO . die $ "Abort."
@@ -146,16 +149,21 @@ deploymentScript Options{..} = do
     commitAndPushNewGenesisFiles = do
         echo ""
         echo "Commit and push updated genesis.* files..."
-        cp (genesisKeysDirPrefix <> "*/genesis.*") "."
-        git "add" "genesis.*"
+        currentDate <- getCurrentDate
+        cp (genesisKeysDirPrefix <> currentDate </> genesisBin)
+           (genesisKeysDirPrefix <> currentDate </> genesisInfo)
+           "."
+        git "add" genesisBin genesisInfo
         git "commit" "-m" ("[" <> issueId <> "] Update genesis.* files for new keys.")
         getCurrentBranch >>= git "push" "origin"
+      where
 
     uploadGeneratedKeysToCluster = do
         echo ""
         echo "Upload generated keys to new cluster (after deployment these keys will be copied to nodes)..."
         runCommandOnDeployer $ "cd " <> clusterRoot <> " && CUR_DATE=$(date +%F) && mkdir " <> genesisKeysDirPrefix <> "$CUR_DATE"
-        scp "-r" (genesisKeysDirPrefix <> "*/nodes") (deployerServer <> ":" <> clusterRoot)
+        currentDate <- getCurrentDate
+        scp "-r" (genesisKeysDirPrefix <> currentDate <> "/nodes") (deployerServer <> ":" <> clusterRoot)
 
     copyGeneratedKeysToNodes = do
         echo ""
