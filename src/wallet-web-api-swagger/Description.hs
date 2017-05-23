@@ -2,9 +2,7 @@
 
 -- | Descriptions for each endpoint, for Swagger-documentation.
 
-module Description
-  ( module Description
-  ) where
+module Description where
 
 import           Universum
 

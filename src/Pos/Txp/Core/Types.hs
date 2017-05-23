@@ -18,7 +18,6 @@ module Pos.Txp.Core.Types
        -- * Tx parts
        , TxIn (..)
        , TxOut (..)
-       , _TxOut
        , TxOutAux (..)
        , TxAttributes
 
@@ -45,7 +44,7 @@ module Pos.Txp.Core.Types
        , TxpUndo
        ) where
 
-import           Control.Lens         (makeLenses, makePrisms)
+import           Control.Lens         (makeLenses)
 import           Data.DeriveTH        (derive, makeNFData)
 import           Data.Hashable        (Hashable)
 import           Data.Text.Buildable  (Buildable)
@@ -347,5 +346,3 @@ derive makeNFData ''TxDistribution
 derive makeNFData ''Tx
 derive makeNFData ''TxProof
 derive makeNFData ''TxPayload
-
-makePrisms ''TxOut

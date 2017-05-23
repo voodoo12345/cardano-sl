@@ -84,14 +84,6 @@ data UpdateConstants = UpdateConstants
     , ccGenesisHeavyDelThd           :: !Double
       -- | Eligibility threshold for MPC
     , ccGenesisMpcThd                :: !Double
-      -- | Last known block version: major
-    , ccLastKnownBVMajor             :: !Word16
-      -- | Last known block version: minor
-    , ccLastKnownBVMinor             :: !Word16
-      -- | Last known block version: alt
-    , ccLastKnownBVAlt               :: !Word8
-      -- | Application version
-    , ccApplicationVersion           :: !Word32
     }
     deriving (Show, Generic)
 
@@ -113,14 +105,11 @@ ourAppName =
 
 -- | Last block version application is aware of.
 lastKnownBlockVersion :: BlockVersion
-lastKnownBlockVersion = BlockVersion (ccLastKnownBVMajor updateConstants)
-                                     (ccLastKnownBVMinor updateConstants)
-                                     (ccLastKnownBVAlt updateConstants)
+lastKnownBlockVersion = BlockVersion 0 0 0
 
 -- | Version of application (code running)
 curSoftwareVersion :: SoftwareVersion
-curSoftwareVersion = SoftwareVersion ourAppName
-                                     (ccApplicationVersion updateConstants)
+curSoftwareVersion = SoftwareVersion ourAppName 0
 
 ----------------------------------------------------------------------------
 -- Genesis constants

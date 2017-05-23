@@ -2,9 +2,7 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Main
-  ( main
-  ) where
+module Main where
 
 import           Universum
 

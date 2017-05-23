@@ -9,7 +9,7 @@ import qualified Data.List.NonEmpty         as NE
 import           Prelude                    (read, show)
 import           Serokell.Data.Memory.Units (Byte)
 import           Serokell.Util.Parse        (parseIntegralSafe)
-import           Text.Parsec                (many1, parse, parserFail, try, (<?>))
+import           Text.Parsec                (many1, parse, try, (<?>))
 import           Text.Parsec.Char           (alphaNum, anyChar, digit, space, spaces,
                                              string)
 import           Text.Parsec.Combinator     (eof, manyTill)
@@ -23,7 +23,7 @@ import           Pos.Crypto                 (Hash, decodeHash)
 import           Pos.Txp                    (TxOut (..))
 import           Pos.Types                  (Address (..), BlockVersion, Coin, EpochIndex,
                                              SoftwareVersion, decodeTextAddress, mkCoin)
-import           Pos.Update                 (SystemTag, UpId, mkSystemTag)
+import           Pos.Update                 (UpId)
 
 data Command
     = Balance Address
@@ -37,7 +37,6 @@ data Command
           , puSlotDurationSec :: Int
           , puMaxBlockSize    :: Byte
           , puSoftwareVersion :: SoftwareVersion
-          , puSystemTag       :: SystemTag
           , puFilePath        :: Maybe FilePath
           }
     | Help
@@ -117,13 +116,7 @@ proposeUpdate =
     lexeme parseIntegralSafe <*>
     lexeme parseIntegralSafe <*>
     lexeme parseSoftwareVersion <*>
-    lexeme parseSystemTag <*>
     optional (lexeme (many1 anyChar))
-
-parseSystemTag :: Parser SystemTag
-parseSystemTag =
-    either parserFail pure . mkSystemTag . toText =<<
-        (many alphaNum)
 
 command :: Parser Command
 command = try (text "balance") *> balance <|>

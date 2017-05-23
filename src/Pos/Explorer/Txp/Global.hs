@@ -46,13 +46,11 @@ eApplyBlocksSettings =
     }
 
 extraOps :: ExplorerExtra -> SomeBatchOp
-extraOps (ExplorerExtra em (HM.toList -> histories) balances) =
+extraOps (ExplorerExtra em (HM.toList -> histories)) =
     SomeBatchOp $
     map GS.DelTxExtra (MM.deletions em) ++
     map (uncurry GS.AddTxExtra) (MM.insertions em) ++
-    map (uncurry GS.UpdateAddrHistory) histories ++
-    map (uncurry GS.PutAddrBalance) (MM.insertions balances) ++
-    map GS.DelAddrBalance (MM.deletions balances)
+    map (uncurry GS.UpdateAddrHistory) histories
 
 applyBlund :: (MonadSlots m, EGlobalToilMode m) => TxpBlund -> m ()
 applyBlund blund = do

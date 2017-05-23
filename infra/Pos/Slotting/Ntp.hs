@@ -262,7 +262,6 @@ mkNtpSlottingVar
        , MonadMask m
        , MonadBaseControl IO m
        , WithLogger m
-       , MonadMask m
        , Mockables m
         [ CurrentTime
         , Delay

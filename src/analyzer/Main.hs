@@ -1,8 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Main
-  ( main
-  ) where
+module Main where
 
 import           Control.Applicative        (empty)
 import           Data.Aeson                 (decode, fromJSON, json')

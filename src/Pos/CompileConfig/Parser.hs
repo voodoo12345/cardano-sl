@@ -1,8 +1,6 @@
 -- | Compile-time configuration parser.
 
-module Pos.CompileConfig.Parser
-   ( compileConfig
-   ) where
+module Pos.CompileConfig.Parser where
 
 import           Data.Yaml               (parseJSON)
 import           Universum

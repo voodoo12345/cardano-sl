@@ -45,7 +45,6 @@ no_nix=false
 ram=false
 prod=false
 wallet=true
-explorer=false
 
 if [ -e .no-nix ]; then
   no_nix=true
@@ -75,9 +74,6 @@ do
   elif [[ $var == "--no-wallet" ]]; then
     wallet=false
   # disabling --fast
-  elif [[ $var == "--explorer" ]]; then
-    explorer=true
-  # disabling --fast
   elif [[ $var == "-O2" ]]; then
     no_fast=true
   # project name = build only the project
@@ -101,10 +97,6 @@ fi
 if [[ $prod == true ]]; then
   commonargs="$commonargs --flag cardano-sl-core:-dev-mode"
   export CSL_SYSTEM_TAG=linux64
-fi
-
-if [[ $explorer == true ]]; then
-  commonargs="$commonargs --flag cardano-sl:with-explorer"
 fi
 
 if [[ $wallet == false ]]; then

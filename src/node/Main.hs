@@ -5,9 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators       #-}
 
-module Main
-  ( main
-  ) where
+module Main where
 
 import           Control.Monad.Trans        (MonadTrans)
 import           Data.Maybe                 (fromJust)
@@ -57,7 +55,7 @@ import           Pos.Wallet                 (WalletSscType)
 import           Pos.WorkMode               (ProductionMode, RawRealMode, RawRealModeK,
                                              StaticMode, StatsMode)
 #ifdef WITH_WEB
-import           Pos.Web                    (serveWebGT)
+import           Pos.Web                    (serveWebBase, serveWebGT)
 import           Pos.WorkMode               (WorkMode)
 #ifdef WITH_WALLET
 import           Pos.Wallet.Web             (WalletProductionMode, WalletStaticMode,
@@ -183,6 +181,17 @@ action peerHolder args@Args {..} transport = do
         )
         => Transport (t0 $ t1 $ t2 $ t3 (RawRealMode ssc))
     transportW = hoistTransport (lift . lift . lift . lift) transport
+
+#ifdef WITH_WEB
+plugins ::
+    ( SscConstraint ssc
+    , WorkMode ssc m
+    , MonadNodeContext ssc m
+    ) => Args -> [m ()]
+plugins Args {..}
+    | enableWeb = [serveWebBase webPort]
+    | otherwise = []
+#endif
 
 #ifdef WITH_WEB
 pluginsGT ::
