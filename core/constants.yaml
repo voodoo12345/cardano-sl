@@ -137,6 +137,8 @@ testnet_staging: &testnet_staging
 prod: &prod
   <<: *qanet
 
+  k: 10000
+
 ##############################################################################
 ##                                                                          ##
 ##   Wallet config                                                          ##
