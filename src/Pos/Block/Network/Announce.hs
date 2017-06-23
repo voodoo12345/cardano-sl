@@ -103,8 +103,9 @@ handleHeadersCommunication conv _ = do
             Left _  -> fromMaybe tipHeader <$> DB.blkGetHeader (tip ^. prevBlockL)
             Right _ -> pure tipHeader
     handleSuccess h = do
-        onSuccess
+        logDebug $ "MDA: MsgHeaders lengh: " <> show (length h)
         send conv (MsgHeaders h)
+        onSuccess
         handleHeadersCommunication conv Proxy
     onSuccess =
         logDebug "handleGetHeaders: responded successfully"
