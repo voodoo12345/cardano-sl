@@ -37,7 +37,7 @@ dev: &dev
   neighboursSendThreshold: 2
   networkDiameter: 3
   networkConnectionTimeout: 2000
-  networkReceiveTimeout: 5000
+  networkReceiveTimeout: 500000 #temporary change, actual timeout should be much less
 
   ## P2P Security
   mdNoBlocksSlotThreshold: 3 # should be less than 2 * k
@@ -112,19 +112,17 @@ prod_base: &prod_base
   ntpPollDelay: 60000000 # 1 min
 
   blockRetrievalQueueSize: 100
-  recoveryHeadersMessage: 1000
+  recoveryHeadersMessage: 10000
 
 qanet: &qanet
   <<: *prod_base
 
-  k: 9
+  k: 5000
   genesisSlotDurationSec: 15
   networkDiameter: 10
   mdNoBlocksSlotThreshold: 10
 
   protocolMagic: 60987800
-
-  recoveryHeadersMessage: 100
 
 testnet: &testnet
   <<: *prod_base
