@@ -13,7 +13,10 @@ module Pos.Update.DB
        , getProposalState
        , getConfirmedSV
        , getMaxBlockSize
-       , getSlottingData
+       , getEpochSlottingData
+       , getEpochLastIndex
+       , getEpochIndices
+       , getAllSlottingData
        , getEpochProposers
 
          -- * Operations
@@ -51,7 +54,7 @@ import           Pos.Binary.Infra.Slotting    ()
 import           Pos.Binary.Update            ()
 import           Pos.Core                     (ApplicationName, BlockVersion,
                                                ChainDifficulty, NumSoftwareVersion,
-                                               SlotId, SoftwareVersion (..),
+                                               EpochIndex (..), SlotId, SoftwareVersion (..),
                                                StakeholderId, Timestamp (..))
 import           Pos.Core.Constants           (epochSlots, genesisBlockVersionData,
                                                genesisSlotDuration)
@@ -61,7 +64,7 @@ import           Pos.DB                       (DBIteratorClass (..), DBTag (..),
                                                RocksBatchOp (..), encodeWithKeyPrefix)
 import           Pos.DB.Error                 (DBError (DBMalformed))
 import           Pos.DB.GState.Common         (gsGetBi, writeBatchGState)
-import           Pos.Slotting.Types           (EpochSlottingData (..), SlottingData (..))
+import           Pos.Slotting.Types           (EpochSlottingData (..))
 import           Pos.Update.Constants         (genesisBlockVersion,
                                                genesisSoftwareVersions, ourAppName)
 import           Pos.Update.Core              (BlockVersionData (..), UpId,
@@ -110,12 +113,15 @@ getProposalState = gsGetBi . proposalKey
 getConfirmedSV :: MonadDBRead m => ApplicationName -> m (Maybe NumSoftwareVersion)
 getConfirmedSV = gsGetBi . confirmedVersionKey
 
--- | Get most recent 'SlottingData'.
-getSlottingData :: MonadDBRead m => m SlottingData
-getSlottingData = maybeThrow (DBMalformed msg) =<< gsGetBi slottingDataKey
-  where
-    msg =
-        "Update System part of GState DB is not initialized (slotting data is missing)"
+-- | Get the 'EpochSlottingData' for a particular epoch.
+getEpochSlottingData :: MonadDBRead m => EpochIndex -> m (Maybe EpochSlottingData)
+getEpochSlottingData ei = gsGetBi (slottingDataKey ei)
+
+getEpochLastIndex :: (MonadRealDB m) => m EpochIndex
+getEpochLastIndex = do
+  maxIndex <- fmap maximum . nonEmpty <$> getEpochIndices
+  maybeThrow (DBMalformed msg) maxIndex
+  where msg = "Update System part of GState DB is not initialized (last epoch index is missing)"
 
 -- | Get proposers for current epoch.
 getEpochProposers :: MonadDBRead m => m (HashSet StakeholderId)
@@ -138,7 +144,8 @@ data UpdateOp
     | SetAdopted !BlockVersion BlockVersionData
     | SetBVState !BlockVersion !BlockVersionState
     | DelBV !BlockVersion
-    | PutSlottingData !SlottingData
+    | PutEpochSlotData !EpochIndex !EpochSlottingData
+    | DelEpochSlotData !EpochIndex
     | PutEpochProposers !(HashSet StakeholderId)
 
 instance RocksBatchOp UpdateOp where
@@ -163,8 +170,10 @@ instance RocksBatchOp UpdateOp where
         [Rocks.Put (bvStateKey bv) (encode st)]
     toBatchOp (DelBV bv) =
         [Rocks.Del (bvStateKey bv)]
-    toBatchOp (PutSlottingData sd) =
-        [Rocks.Put slottingDataKey (encode sd)]
+    toBatchOp (PutEpochSlotData ei esd) =
+        [Rocks.Put (slottingDataKey ei) (encodeStrict esd)]
+    toBatchOp (DelEpochSlotData ei) =
+        [Rocks.Del (slottingDataKey ei)]
     toBatchOp (PutEpochProposers proposers) =
         [Rocks.Put epochProposersKey (encode proposers)]
 
@@ -176,11 +185,6 @@ initGStateUS :: (MonadDB m) => Timestamp -> m ()
 initGStateUS systemStart = do
     let genesisEpochDuration =
             fromIntegral epochSlots * convertUnit genesisSlotDuration
-        genesisSlottingData = SlottingData
-            { sdPenult      = esdPenult
-            , sdPenultEpoch = 0
-            , sdLast        = esdLast
-            }
         esdPenult = EpochSlottingData
             { esdSlotDuration = genesisSlotDuration
             , esdStart        = systemStart
@@ -189,9 +193,10 @@ initGStateUS systemStart = do
         esdLast = EpochSlottingData
             { esdSlotDuration = genesisSlotDuration
             , esdStart        = epoch1Start
+            PutEpochSlotData 0 esdPenult : PutEpochSlotData 1 esdLast :
             }
     writeBatchGState $
-        PutSlottingData genesisSlottingData :
+        PutEpochSlotData 0 esdPenult : PutEpochSlotData 1 esdLast :
         PutEpochProposers mempty :
         SetAdopted genesisBlockVersion genesisBlockVersionData :
         map ConfirmVersion genesisSoftwareVersions
@@ -294,6 +299,32 @@ getCompetingBVStates
 getCompetingBVStates =
     runConduitRes $ bvSource .| CL.filter (bvsIsConfirmed . snd) .| CL.consume
 
+-- AJ: MERGE: THIS ENTIRE SECTION OF CODE NEEDS TO BE CHANGED TO USE CONDUITS
+{-
+-- Iterator by epoch slotting data
+data ESDIter
+
+instance DBIteratorClass ESDIter where
+    type IterKey ESDIter = EpochIndex
+    type IterValue ESDIter = EpochSlottingData
+    iterKeyPrefix _ = esdIterationPrefix
+
+-- | Get all `EpochIndex`
+getEpochIndices :: MonadRealDB m => m [EpochIndex]
+getEpochIndices = runDBnMapIterator @ESDIter _gStateDB (step []) fst
+  where
+    step res = nextItem >>= maybe (pure res) (onItem res)
+    onItem res = step . (: res)
+
+-- | Get all `EpochSlottingData` with their corresponding `EpochIndex`
+getAllSlottingData :: MonadRealDB m => m [(EpochIndex, EpochSlottingData)]
+getAllSlottingData = runDBnIterator @ESDIter _gStateDB (step [])
+  where
+    step res = nextItem >>= maybe (pure res) (onItem res)
+    onItem res = step . (: res)
+-}
+
+
 ----------------------------------------------------------------------------
 -- Keys ('us' prefix stands for Update System)
 ----------------------------------------------------------------------------
@@ -325,8 +356,11 @@ confirmedProposalKeySV = encodeWithKeyPrefix @ConfPropIter
 confirmedIterationPrefix :: ByteString
 confirmedIterationPrefix = "us/cp/"
 
-slottingDataKey :: ByteString
-slottingDataKey = "us/slotting/"
+esdIterationPrefix :: ByteString
+esdIterationPrefix = "us/slotting/"
+
+slottingDataKey :: EpochIndex -> ByteString
+slottingDataKey = encodeWithKeyPrefix @ESDIter
 
 epochProposersKey :: ByteString
 epochProposersKey = "us/epoch-proposers/"

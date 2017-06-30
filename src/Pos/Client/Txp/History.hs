@@ -37,6 +37,7 @@ import           Control.Monad.Trans.Identity (IdentityT (..))
 import           Data.Coerce                  (coerce)
 import           Data.DList                   (DList)
 import qualified Data.DList                   as DL
+import qualified Data.HashMap.Strict          as HM
 import qualified Data.Map.Strict              as M (lookup)
 import qualified Data.Text.Buildable
 import qualified Ether
@@ -221,6 +222,15 @@ type TxHistoryEnv ctx m =
     , MonadTxpMem TxpExtra_TMP ctx m
     , MonadBaseControl IO m
     )
+    ) => MonadTxHistory (Ether.TaggedTrans TxHistoryRedirectTag t m)
+  where
+    getBlockHistory
+        :: forall ssc. SscHelpersClass ssc
+        => Tagged ssc ([Address] -> TxHistoryRedirect m (DList TxHistoryEntry))
+    getBlockHistory = Tagged $ \addrs -> do
+        bot <- GS.getBot
+        -- AJ: TODO: Efficiency
+        sd <- HM.fromList <$> GS.getAllSlottingData
 
 type TxHistoryEnv' ssc ctx m =
     ( MonadBlockDB ssc m
@@ -234,7 +244,7 @@ getBlockHistoryDefault
     => [Address] -> m (DList TxHistoryEntry)
 getBlockHistoryDefault addrs = do
     bot <- GS.getBot
-    sd <- GS.getSlottingData
+    sd <- GS.getAllSlottingData
 
     let fromBlund :: Blund ssc -> GenesisHistoryFetcher m (Block ssc)
         fromBlund = pure . fst

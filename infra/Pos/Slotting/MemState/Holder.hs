@@ -15,7 +15,8 @@ import           Universum
 import           Control.Monad.STM  (retry)
 
 import           Pos.Core.Types     (EpochIndex, Timestamp)
-import           Pos.Slotting.Types (SlottingData (sdPenultEpoch))
+import           Pos.Slotting.Types (SlottingData, addEpochSlottingData,
+                                     getPenultEpochIndex, lookupEpochSlottingData, getLastEpochIndex)
 
 ----------------------------------------------------------------------------
 -- Context
@@ -43,12 +44,32 @@ waitPenultEpochEqualsDefault :: SlotsDefaultEnv ctx m => EpochIndex -> m ()
 waitPenultEpochEqualsDefault target = do
     var <- view slottingVar
     atomically $ do
-        penultEpoch <- sdPenultEpoch <$> readTVar var
+        penultEpoch <- sdPenultEpochIndex <$> readTVar var
         when (penultEpoch /= target) retry
 
+-- AJ: MERGE: ALL THESE NEW DEFAULT FUNCTIONS NEED TO BE USED SOMEWHERE
+
+-- AJ: MERGE: THIS PROBABLY NEEDS TO GO
 putSlottingDataDefault :: SlotsDefaultEnv ctx m => SlottingData -> m ()
 putSlottingDataDefault sd = do
     var <- view slottingVar
     atomically $ do
         penultEpoch <- sdPenultEpoch <$> readTVar var
         when (penultEpoch < sdPenultEpoch sd) $ writeTVar var sd
+
+getEpochLastIndexDefault :: SlotsDefaultEnv ctx m => m ()
+getEpochLastIndexDefault = do
+    var <- view slottingVar
+    atomically $ (fromMaybe 0 . getLastEpochIndex) <$> readTVar var
+
+getEpochSlottingDataDefault :: SlotsDefaultEnv ctx m => EpochIndex -> m ()
+getEpochSlottingDataDefault ei = do
+    var <- view slottingVar
+    atomically $ lookupEpochSlottingData ei <$> readTVar var
+
+putEpochSlottingDataDefault :: SlotsDefaultEnv ctx m => EpochIndex -> EpochSlottingData -> m ()
+putEpochSlottingDataDefault ei esd = do
+     var <- view slottingVar
+     atomically $ do
+         sd <- readTVar var
+         writeTVar var (addEpochSlottingData ei esd sd)

@@ -41,8 +41,10 @@ import           Control.Monad.Trans        (MonadTrans)
 import           Data.DList                 (DList)
 import           Ether.Internal             (HasLens (..))
 import qualified Data.DList                 as DL
+import qualified Data.HashMap.Strict        as HM
 import           Data.List                  ((!!))
 import qualified Data.List.NonEmpty         as NE
+import qualified Data.Map                   as M
 import qualified Data.Text.Buildable
 import qualified Data.Map                   as M
 import           Formatting                 (bprint, build, sformat, (%))
@@ -56,7 +58,7 @@ import           Pos.Block.Logic            (withBlkSemaphore_)
 import           Pos.Block.Types            (Blund, undoTx)
 import           Pos.Client.Txp.History     (TxHistoryEntry (..), runGenesisToil)
 import           Pos.Constants              (genesisHash)
-import           Pos.Context                (BlkSemaphore, genesisUtxoM, GenesisUtxo (..))
+import           Pos.Context                (BlkSemaphore, GenesisUtxo (..), genesisUtxoM)
 import           Pos.Core                   (AddrPkAttrs (..), Address (..),
                                              ChainDifficulty, HasDifficulty (..),
                                              HeaderHash, Timestamp, headerHash,
@@ -73,24 +75,25 @@ import qualified Pos.DB.GState              as GS
 import           Pos.DB.GState.BlockExtra   (foldlUpWhileM, resolveForwardLink)
 import           Pos.DB.Rocks               (MonadRealDB)
 import           Pos.Slotting               (getSlotStartPure)
-import           Pos.Txp.Core               (Tx (..), TxAux (..), TxId, TxOutAux (..), TxIn (..) ,
-                                             TxUndo, flattenTxPayload, toaOut, topsortTxs, getTxDistribution,
+import           Pos.Txp.Core               (Tx (..), TxAux (..), TxId, TxIn (..),
+                                             TxOutAux (..), TxUndo, flattenTxPayload,
+                                             getTxDistribution, toaOut, topsortTxs,
                                              txOutAddress)
 import           Pos.Txp.MemState.Class     (MonadTxpMem, getLocalTxs)
 import           Pos.Txp.Toil               (MonadUtxo (..), MonadUtxoRead (..), ToilT,
                                              UtxoModifier, applyTxToUtxo, evalToilTEmpty, runDBToil)
+                                             evalToilTEmpty, runDBTxp, runUtxoReaderT)
 import           Pos.Util.Chrono            (getNewestFirst)
-import qualified Pos.Util.Modifier          as MM
 import           Pos.Util.Modifier          (MapModifier)
+import qualified Pos.Util.Modifier          as MM
 import           Pos.Util.Util              (maybeThrow)
 
 import           Pos.Wallet.Web.Error.Types (WalletError (..))
 import           Pos.Ssc.Class              (SscHelpersClass)
 import           Pos.Wallet.SscType         (WalletSscType)
 import           Pos.Wallet.Web.ClientTypes (AccountId (..), Addr, CId,
-                                             CWAddressMeta (..), Wal,
-                                             addressToCId, aiWId, encToCId,
-                                             isTxLocalAddress)
+                                             CWAddressMeta (..), Wal, addressToCId, aiWId,
+                                             encToCId, isTxLocalAddress)
 import           Pos.Wallet.Web.State       (AddressLookupMode (..),
                                              CustomAddressType (..),
                                              WebWalletModeDB)
@@ -230,7 +233,7 @@ syncWalletWithGStateUnsafe
     -> m ()
 syncWalletWithGStateUnsafe encSK = do
     tipHeader <- DB.getTipHeader @ssc
-    slottingData <- GS.getSlottingData
+    slottingData <- HM.fromList <$> GS.getAllSlottingData
 
     let wAddr = encToCId encSK
         constTrue = \_ _ -> True
@@ -240,7 +243,7 @@ syncWalletWithGStateUnsafe encSK = do
         gbTxs = either (const []) (^. mainBlockTxPayload . to flattenTxPayload)
 
         mainBlkHeaderTs mBlkH =
-            getSlotStartPure True (mBlkH ^. headerSlotL) slottingData
+            getSlotStartPure (mBlkH ^. headerSlotL) slottingData
         blkHeaderTs = either (const Nothing) mainBlkHeaderTs
 
         rollbackBlock :: [CWAddressMeta] -> Blund ssc -> CAccModifier
