@@ -62,10 +62,15 @@ submitMTx
     -> m (Either TxError TxAux)
 submitMTx sendActions hdwSigner na outputs = do
     let addrs = map snd $ toList hdwSigner
+    logInfo $ "Getting own utxo"
     utxo <- getOwnUtxos addrs
+    logInfo $ "Got own utxo"
     runExceptT $ do
+        lift $ logInfo $ "Creating transaction"
         txw <- ExceptT $ return $ createMTx utxo hdwSigner outputs
-        submitAndSave sendActions na txw
+        lift $ logInfo $ "Transaction has been created. Submitting and saving transaction"
+        tx <- submitAndSave sendActions na txw
+        tx <$ (lift $ logInfo $ "Transaction has been submitted and saved")
 
 -- | Construct Tx using secret key and given list of desired outputs
 submitTx
@@ -108,9 +113,9 @@ submitTxRaw
     => SendActions m -> [NodeId] -> TxAux -> m ()
 submitTxRaw sa na txAux@TxAux {..} = do
     let txId = hash taTx
-    logInfo $ sformat ("Submitting transaction: "%txaF) txAux
-    logInfo $ sformat ("Transaction id: "%build) txId
+    logInfo $ sformat ("Submitting transaction with id "%build%": "%txaF) txId txAux
     void $ mapConcurrently (flip (sendTx sa) txAux) na
+    logInfo $ sformat ("Transaction "%build%" has been sent") txId
 
 sendTxOuts :: OutSpecs
 sendTxOuts = createOutSpecs (Proxy :: Proxy (InvOrDataTK TxId TxMsgContents))
