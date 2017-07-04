@@ -33,6 +33,7 @@ dev: &dev
   networkDiameter: 3
   networkConnectionTimeout: 2000
   networkReceiveTimeout: 5000
+  peersToSendTx: 3
 
   ## P2P Security
   mdNoBlocksSlotThreshold: 3 # should be less than 2 * k

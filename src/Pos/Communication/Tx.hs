@@ -24,6 +24,7 @@ import           Pos.Communication.Methods  (sendTx)
 import           Pos.Communication.Protocol (NodeId, OutSpecs, SendActions)
 import           Pos.Communication.Specs    (createOutSpecs)
 import           Pos.Communication.Types    (InvOrDataTK)
+import           Pos.Constants              (peersToSendTx)
 import           Pos.Crypto                 (RedeemSecretKey, SafeSigner, hash,
                                              redeemToPublic, safeToPublic)
 import           Pos.DB.Class               (MonadGState)
@@ -113,8 +114,11 @@ submitTxRaw
     => SendActions m -> [NodeId] -> TxAux -> m ()
 submitTxRaw sa na txAux@TxAux {..} = do
     let txId = hash taTx
+    let l = length na
+    -- TODO maybe should take random permutation?
+    let sublistToSend = take (min l peersToSendTx) na
     logInfo $ sformat ("Submitting transaction with id "%build%": "%txaF) txId txAux
-    void $ mapConcurrently (flip (sendTx sa) txAux) na
+    void $ mapConcurrently (flip (sendTx sa) txAux) sublistToSend
     logInfo $ sformat ("Transaction "%build%" has been sent") txId
 
 sendTxOuts :: OutSpecs

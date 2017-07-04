@@ -26,6 +26,7 @@ module Pos.Constants
        , defaultPeers
        , recoveryHeadersMessage
        , messageCacheTimeout
+       , peersToSendTx
 
        -- * Delegation
        , lightDlgConfirmationTimeout
@@ -104,6 +105,9 @@ recoveryHeadersMessage = fromIntegral . ccRecoveryHeadersMessage $ compileConfig
 -- messages can use this timeout to invalidate caches.
 messageCacheTimeout :: (Integral a) => a
 messageCacheTimeout = fromIntegral . ccMessageCacheTimeout $ compileConfig
+
+peersToSendTx :: Int
+peersToSendTx = fromIntegral . ccPeersToSendTx $ compileConfig
 
 ----------------------------------------------------------------------------
 -- Delegation

@@ -40,4 +40,6 @@ data CompileConfig = CompileConfig
       -- ^ Block retrieval queue capacity
     , ccPropagationQueueSize          :: !Int
       -- ^ InvMsg propagation queue capacity
+    , ccPeersToSendTx                 :: !Int
+      -- ^ A transaction will be sent @ccPeersToSendTx@ nodes.
     } deriving (Show)
