@@ -222,15 +222,6 @@ type TxHistoryEnv ctx m =
     , MonadTxpMem TxpExtra_TMP ctx m
     , MonadBaseControl IO m
     )
-    ) => MonadTxHistory (Ether.TaggedTrans TxHistoryRedirectTag t m)
-  where
-    getBlockHistory
-        :: forall ssc. SscHelpersClass ssc
-        => Tagged ssc ([Address] -> TxHistoryRedirect m (DList TxHistoryEntry))
-    getBlockHistory = Tagged $ \addrs -> do
-        bot <- GS.getBot
-        -- AJ: TODO: Efficiency
-        sd <- HM.fromList <$> GS.getAllSlottingData
 
 type TxHistoryEnv' ssc ctx m =
     ( MonadBlockDB ssc m
@@ -244,13 +235,14 @@ getBlockHistoryDefault
     => [Address] -> m (DList TxHistoryEntry)
 getBlockHistoryDefault addrs = do
     bot <- GS.getBot
-    sd <- GS.getAllSlottingData
+    -- AJ: TODO: Efficiency
+    sd <- HM.fromList <$> GS.getAllSlottingData
 
     let fromBlund :: Blund ssc -> GenesisHistoryFetcher m (Block ssc)
         fromBlund = pure . fst
 
         getBlockTimestamp :: MainBlock ssc -> Maybe Timestamp
-        getBlockTimestamp blk = getSlotStartPure True (blk ^. mainBlockSlot) sd
+        getBlockTimestamp blk = getSlotStartPure (blk ^. mainBlockSlot) sd
 
         blockFetcher :: HeaderHash -> GenesisHistoryFetcher m (DList TxHistoryEntry)
         blockFetcher start = GS.foldlUpWhileM fromBlund start (const $ const True)

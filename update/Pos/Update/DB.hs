@@ -53,9 +53,10 @@ import           Pos.Binary.Class             (encode)
 import           Pos.Binary.Infra.Slotting    ()
 import           Pos.Binary.Update            ()
 import           Pos.Core                     (ApplicationName, BlockVersion,
-                                               ChainDifficulty, NumSoftwareVersion,
-                                               EpochIndex (..), SlotId, SoftwareVersion (..),
-                                               StakeholderId, Timestamp (..))
+                                               ChainDifficulty, EpochIndex (..),
+                                               NumSoftwareVersion, SlotId,
+                                               SoftwareVersion (..), StakeholderId,
+                                               Timestamp (..))
 import           Pos.Core.Constants           (epochSlots, genesisBlockVersionData,
                                                genesisSlotDuration)
 import           Pos.Crypto                   (hash)
@@ -117,7 +118,7 @@ getConfirmedSV = gsGetBi . confirmedVersionKey
 getEpochSlottingData :: MonadDBRead m => EpochIndex -> m (Maybe EpochSlottingData)
 getEpochSlottingData ei = gsGetBi (slottingDataKey ei)
 
-getEpochLastIndex :: (MonadRealDB m) => m EpochIndex
+getEpochLastIndex :: (MonadDBRead m) => m EpochIndex
 getEpochLastIndex = do
   maxIndex <- fmap maximum . nonEmpty <$> getEpochIndices
   maybeThrow (DBMalformed msg) maxIndex
@@ -171,7 +172,7 @@ instance RocksBatchOp UpdateOp where
     toBatchOp (DelBV bv) =
         [Rocks.Del (bvStateKey bv)]
     toBatchOp (PutEpochSlotData ei esd) =
-        [Rocks.Put (slottingDataKey ei) (encodeStrict esd)]
+        [Rocks.Put (slottingDataKey ei) (encode esd)]
     toBatchOp (DelEpochSlotData ei) =
         [Rocks.Del (slottingDataKey ei)]
     toBatchOp (PutEpochProposers proposers) =
@@ -193,7 +194,6 @@ initGStateUS systemStart = do
         esdLast = EpochSlottingData
             { esdSlotDuration = genesisSlotDuration
             , esdStart        = epoch1Start
-            PutEpochSlotData 0 esdPenult : PutEpochSlotData 1 esdLast :
             }
     writeBatchGState $
         PutEpochSlotData 0 esdPenult : PutEpochSlotData 1 esdLast :
@@ -299,30 +299,27 @@ getCompetingBVStates
 getCompetingBVStates =
     runConduitRes $ bvSource .| CL.filter (bvsIsConfirmed . snd) .| CL.consume
 
--- AJ: MERGE: THIS ENTIRE SECTION OF CODE NEEDS TO BE CHANGED TO USE CONDUITS
-{-
 -- Iterator by epoch slotting data
 data ESDIter
 
 instance DBIteratorClass ESDIter where
     type IterKey ESDIter = EpochIndex
     type IterValue ESDIter = EpochSlottingData
-    iterKeyPrefix _ = esdIterationPrefix
+    iterKeyPrefix = esdIterationPrefix
+
+slottingDataSource :: (MonadDBRead m) => Source (ResourceT m) (IterType ESDIter)
+slottingDataSource = dbIterSource GStateDB (Proxy @ESDIter)
 
 -- | Get all `EpochIndex`
-getEpochIndices :: MonadRealDB m => m [EpochIndex]
-getEpochIndices = runDBnMapIterator @ESDIter _gStateDB (step []) fst
-  where
-    step res = nextItem >>= maybe (pure res) (onItem res)
-    onItem res = step . (: res)
+getEpochIndices :: MonadDBRead m => m [EpochIndex]
+getEpochIndices =
+    runConduitRes $
+        mapOutput fst slottingDataSource .|
+        CL.consume
 
 -- | Get all `EpochSlottingData` with their corresponding `EpochIndex`
-getAllSlottingData :: MonadRealDB m => m [(EpochIndex, EpochSlottingData)]
-getAllSlottingData = runDBnIterator @ESDIter _gStateDB (step [])
-  where
-    step res = nextItem >>= maybe (pure res) (onItem res)
-    onItem res = step . (: res)
--}
+getAllSlottingData :: MonadDBRead m => m [(EpochIndex, EpochSlottingData)]
+getAllSlottingData = runConduitRes $ slottingDataSource .| CL.consume
 
 
 ----------------------------------------------------------------------------

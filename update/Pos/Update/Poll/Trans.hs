@@ -111,6 +111,9 @@ instance MonadPollRead m =>
             map (\dps -> (hash $ upsProposal $ dpsUndecided dps, dps)) <$>
             getDeepProposals cd
     getBlockIssuerStake e = lift . getBlockIssuerStake e
+    -- AJ: TODO: IS THIS CORRECT? USING DEFAULT IMPL HERE?
+    -- AJ: RE-EVAL USAGE OF THIS MODULE
+    getEpochLastIndex = lift getEpochLastIndex
     getEpochSlottingData ei = ether $
         MM.lookupM getEpochSlottingData ei =<< use pmSlottingDataL
 

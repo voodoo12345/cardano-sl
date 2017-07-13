@@ -39,14 +39,13 @@ import           Universum
 import           Control.Lens               (to)
 import           Control.Monad.Trans        (MonadTrans)
 import           Data.DList                 (DList)
-import           Ether.Internal             (HasLens (..))
 import qualified Data.DList                 as DL
 import qualified Data.HashMap.Strict        as HM
 import           Data.List                  ((!!))
 import qualified Data.List.NonEmpty         as NE
 import qualified Data.Map                   as M
 import qualified Data.Text.Buildable
-import qualified Data.Map                   as M
+import           Ether.Internal             (HasLens (..))
 import           Formatting                 (bprint, build, sformat, (%))
 import           Mockable                   (SharedAtomicT)
 import           Serokell.Util              (listJson)
@@ -81,22 +80,21 @@ import           Pos.Txp.Core               (Tx (..), TxAux (..), TxId, TxIn (..
                                              txOutAddress)
 import           Pos.Txp.MemState.Class     (MonadTxpMem, getLocalTxs)
 import           Pos.Txp.Toil               (MonadUtxo (..), MonadUtxoRead (..), ToilT,
-                                             UtxoModifier, applyTxToUtxo, evalToilTEmpty, runDBToil)
-                                             evalToilTEmpty, runDBTxp, runUtxoReaderT)
+                                             UtxoModifier, applyTxToUtxo, evalToilTEmpty,
+                                             evalToilTEmpty, runDBToil)
 import           Pos.Util.Chrono            (getNewestFirst)
 import           Pos.Util.Modifier          (MapModifier)
 import qualified Pos.Util.Modifier          as MM
 import           Pos.Util.Util              (maybeThrow)
 
-import           Pos.Wallet.Web.Error.Types (WalletError (..))
 import           Pos.Ssc.Class              (SscHelpersClass)
 import           Pos.Wallet.SscType         (WalletSscType)
 import           Pos.Wallet.Web.ClientTypes (AccountId (..), Addr, CId,
                                              CWAddressMeta (..), Wal, addressToCId, aiWId,
                                              encToCId, isTxLocalAddress)
+import           Pos.Wallet.Web.Error.Types (WalletError (..))
 import           Pos.Wallet.Web.State       (AddressLookupMode (..),
-                                             CustomAddressType (..),
-                                             WebWalletModeDB)
+                                             CustomAddressType (..), WebWalletModeDB)
 import qualified Pos.Wallet.Web.State       as WS
 
 -- VoidModifier describes a difference between two states.

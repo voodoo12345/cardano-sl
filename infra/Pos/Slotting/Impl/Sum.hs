@@ -9,7 +9,6 @@ module Pos.Slotting.Impl.Sum
        , askSlottingContextSum
        , getCurrentSlotSum
        , getCurrentSlotBlockingSum
-       , getCurrentSlotInaccurateSum
        , currentTimeSlottingSum
 
        -- * Workers
@@ -25,10 +24,9 @@ import           Pos.Core.Types           (SlotId (..), Timestamp)
 import           Pos.Slotting.Impl.Ntp    (NtpMode, NtpSlottingVar, NtpWorkerMode,
                                            ntpCurrentTime, ntpGetCurrentSlot,
                                            ntpGetCurrentSlotBlocking,
-                                           ntpGetCurrentSlotInaccurate, ntpWorkers)
+                                           ntpWorkers)
 import           Pos.Slotting.Impl.Simple (SimpleSlottingMode, currentTimeSlottingSimple,
                                            getCurrentSlotBlockingSimple,
-                                           getCurrentSlotInaccurateSimple,
                                            getCurrentSlotSimple)
 
 -- | Sum of all contexts used by slotting implementations.
@@ -56,12 +54,6 @@ getCurrentSlotBlockingSum =
     view (lensOf @SlottingContextSum) >>= \case
         SCSimple -> getCurrentSlotBlockingSimple
         SCNtp var -> ntpGetCurrentSlotBlocking var
-
-getCurrentSlotInaccurateSum :: SlotsSumEnv ctx m => m SlotId
-getCurrentSlotInaccurateSum =
-    view (lensOf @SlottingContextSum) >>= \case
-        SCSimple -> getCurrentSlotInaccurateSimple
-        SCNtp var -> ntpGetCurrentSlotInaccurate var
 
 currentTimeSlottingSum :: SlotsSumEnv ctx m => m Timestamp
 currentTimeSlottingSum =

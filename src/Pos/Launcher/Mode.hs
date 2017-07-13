@@ -51,10 +51,11 @@ import           Pos.Lrc.Context       (LrcContext)
 import           Pos.Slotting          (HasSlottingVar (..), SlottingData)
 import           Pos.Slotting.Class    (MonadSlots (..))
 import           Pos.Slotting.Impl.Sum (SlottingContextSum, currentTimeSlottingSum,
-                                        getCurrentSlotBlockingSum,
-                                        getCurrentSlotInaccurateSum, getCurrentSlotSum)
-import           Pos.Slotting.MemState (MonadSlotsData (..), getSlottingDataDefault,
-                                        getSystemStartDefault, putSlottingDataDefault,
+                                        getCurrentSlotBlockingSum, getCurrentSlotSum)
+import           Pos.Slotting.MemState (MonadSlotsData (..), getEpochLastIndexDefault,
+                                        getEpochSlottingDataDefault,
+                                        getSystemStartDefault,
+                                        putEpochSlottingDataDefault,
                                         waitPenultEpochEqualsDefault)
 import           Pos.Ssc.Class.Helpers (SscHelpersClass)
 import           Pos.Ssc.Class.Types   (SscBlock)
@@ -141,12 +142,14 @@ instance
 
 instance MonadSlotsData (InitMode ssc) where
     getSystemStart = getSystemStartDefault
-    getSlottingData = getSlottingDataDefault
+    getEpochSlottingData = getEpochSlottingDataDefault
+    getEpochLastIndex = getEpochLastIndexDefault
     waitPenultEpochEquals = waitPenultEpochEqualsDefault
-    putSlottingData = putSlottingDataDefault
+    putEpochSlottingData = putEpochSlottingDataDefault
 
 instance MonadSlots (InitMode ssc) where
     getCurrentSlot = getCurrentSlotSum
     getCurrentSlotBlocking = getCurrentSlotBlockingSum
-    getCurrentSlotInaccurate = getCurrentSlotInaccurateSum
+    -- AJ: TODO: Evaluate the use of blocking instead of inaccurate
+    getCurrentSlotInaccurate = getCurrentSlotBlocking
     currentTimeSlotting = currentTimeSlottingSum

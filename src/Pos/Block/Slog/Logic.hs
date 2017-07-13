@@ -50,7 +50,8 @@ import qualified Pos.DB.GState          as GS
 import           Pos.Exception          (assertionFailed, reportFatalError)
 import           Pos.Lrc.Context        (LrcContext)
 import qualified Pos.Lrc.DB             as LrcDB
-import           Pos.Slotting           (MonadSlots (getCurrentSlot), putSlottingData)
+import           Pos.Slotting           (MonadSlots (getCurrentSlot),
+                                         putEpochSlottingData)
 import           Pos.Ssc.Class.Helpers  (SscHelpersClass (..))
 import           Pos.Util               (inAssertMode, _neHead, _neLast)
 import           Pos.Util.Chrono        (NE, NewestFirst (getNewestFirst),
@@ -296,4 +297,6 @@ slogCommon :: SlogApplyMode ssc ctx m => LastBlkSlots -> m ()
 slogCommon newLastSlots = do
     sanityCheckDB
     slogPutLastSlots newLastSlots
-    putSlottingData =<< GS.getSlottingData
+    -- AJ: TODO: Could this be more efficient? -- https://github.com/input-output-hk/cardano-sl/pull/1107/files#r125887467
+    slottingData <- GS.getAllSlottingData
+    forM_ slottingData $ uncurry putEpochSlottingData

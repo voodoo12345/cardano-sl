@@ -21,7 +21,7 @@ import           Pos.Core                   (ApplicationName, BlockVersion,
                                              SoftforkRule, SoftwareVersion, StakeholderId,
                                              TxFeePolicy)
 import           Pos.Crypto                 (Hash, SignTag (SignUSVote), checkSig)
-import           Pos.Slotting.Types         (SlottingData)
+import           Pos.Slotting.Types         (EpochSlottingData)
 import qualified Pos.Update.Core.Types      as U
 import qualified Pos.Update.Poll.Types      as U
 
@@ -146,7 +146,8 @@ deriveSimpleBi ''U.USUndo [
         Field [| U.unPrevProposers
                      :: Maybe (HashSet StakeholderId)            |],
         Field [| U.unSlottingData
-                     :: Maybe SlottingData                       |]
+                     :: HashMap EpochIndex
+                          (U.PrevValue EpochSlottingData)          |]
     ]]
 
 deriveSimpleBi ''U.UpsExtra [

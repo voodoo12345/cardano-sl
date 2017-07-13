@@ -54,10 +54,11 @@ import           Pos.Lrc                 (LrcContext (..), mkLrcSyncData)
 import           Pos.Slotting            (HasSlottingVar (..), MonadSlots (..),
                                           SlottingData, currentTimeSlottingSimple,
                                           getCurrentSlotBlockingSimple,
-                                          getCurrentSlotInaccurateSimple,
                                           getCurrentSlotSimple)
-import           Pos.Slotting.MemState   (MonadSlotsData (..), getSlottingDataDefault,
-                                          getSystemStartDefault, putSlottingDataDefault,
+import           Pos.Slotting.MemState   (MonadSlotsData (..), getEpochLastIndexDefault,
+                                          getEpochSlottingDataDefault,
+                                          getSystemStartDefault,
+                                          putEpochSlottingDataDefault,
                                           waitPenultEpochEqualsDefault)
 import           Pos.Ssc.Class           (SscBlock)
 import           Pos.Ssc.Class.Helpers   (SscHelpersClass)
@@ -203,7 +204,8 @@ initBlockTestContext testParams@TestParams {..} callback = do
     initBlockTestContextDo btcDBPureVar putSlottingVar putLrcCtx = do
         systemStart <- Timestamp <$> currentTime
         initNodeDBs @SscGodTossing systemStart
-        slottingData <- GState.getSlottingData
+        -- AJ: TODO: Efficiency
+        slottingData <- HM.fromList <$> GState.getAllSlottingData
         btcSlottingVar <- (systemStart, ) <$> newTVarIO slottingData
         putSlottingVar btcSlottingVar
         let btcLoggerName = "testing"
@@ -293,14 +295,16 @@ instance
 
 instance MonadSlotsData (TestInitMode ssc) where
     getSystemStart = getSystemStartDefault
-    getSlottingData = getSlottingDataDefault
+    getEpochSlottingData = getEpochSlottingDataDefault
+    getEpochLastIndex = getEpochLastIndexDefault
     waitPenultEpochEquals = waitPenultEpochEqualsDefault
-    putSlottingData = putSlottingDataDefault
+    putEpochSlottingData = putEpochSlottingDataDefault
 
 instance MonadSlots (TestInitMode ssc) where
     getCurrentSlot = getCurrentSlotSimple
     getCurrentSlotBlocking = getCurrentSlotBlockingSimple
-    getCurrentSlotInaccurate = getCurrentSlotInaccurateSimple
+    -- AJ: Evaluate the use of blocking instead of inaccurate
+    getCurrentSlotInaccurate = getCurrentSlotBlockingSimple
     currentTimeSlotting = currentTimeSlottingSimple
 
 ----------------------------------------------------------------------------
@@ -341,14 +345,16 @@ instance {-# OVERLAPPING #-} HasLoggerName BlockTestMode where
 
 instance MonadSlotsData BlockTestMode where
     getSystemStart = getSystemStartDefault
-    getSlottingData = getSlottingDataDefault
+    getEpochSlottingData = getEpochSlottingDataDefault
+    getEpochLastIndex = getEpochLastIndexDefault
     waitPenultEpochEquals = waitPenultEpochEqualsDefault
-    putSlottingData = putSlottingDataDefault
+    putEpochSlottingData = putEpochSlottingDataDefault
 
 instance MonadSlots BlockTestMode where
     getCurrentSlot = getCurrentSlotSimple
     getCurrentSlotBlocking = getCurrentSlotBlockingSimple
-    getCurrentSlotInaccurate = getCurrentSlotInaccurateSimple
+    -- AJ: Evaluate the use of blocking instead of inaccurate
+    getCurrentSlotInaccurate = getCurrentSlotBlockingSimple
     currentTimeSlotting = currentTimeSlottingSimple
 
 instance MonadDBRead BlockTestMode where

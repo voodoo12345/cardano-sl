@@ -55,12 +55,12 @@ import           Pos.Shutdown                (HasShutdownContext (..))
 import           Pos.Slotting.Class          (MonadSlots (..))
 import           Pos.Slotting.Impl.Sum       (currentTimeSlottingSum,
                                               getCurrentSlotBlockingSum,
-                                              getCurrentSlotInaccurateSum,
                                               getCurrentSlotSum)
 import           Pos.Slotting.MemState       (HasSlottingVar (..), MonadSlotsData (..),
-                                              getSlottingDataDefault,
+                                              getEpochSlottingDataDefault,
+                                              getEpochLastIndexDefault,
                                               getSystemStartDefault,
-                                              putSlottingDataDefault,
+                                              putEpochSlottingDataDefault,
                                               waitPenultEpochEqualsDefault)
 import           Pos.Ssc.Class.Helpers       (SscHelpersClass)
 import           Pos.Ssc.Class.Types         (SscBlock)
@@ -157,14 +157,16 @@ instance {-# OVERLAPPING #-} CanJsonLog (RealMode ssc) where
 
 instance MonadSlotsData (RealMode ssc) where
     getSystemStart = getSystemStartDefault
-    getSlottingData = getSlottingDataDefault
+    getEpochSlottingData = getEpochSlottingDataDefault
+    getEpochLastIndex = getEpochLastIndexDefault
     waitPenultEpochEquals = waitPenultEpochEqualsDefault
-    putSlottingData = putSlottingDataDefault
+    putEpochSlottingData = putEpochSlottingDataDefault
 
 instance MonadSlots (RealMode ssc) where
     getCurrentSlot = getCurrentSlotSum
     getCurrentSlotBlocking = getCurrentSlotBlockingSum
-    getCurrentSlotInaccurate = getCurrentSlotInaccurateSum
+    -- AJ: TODO: Evaluate the use of blocking instead of inaccurate
+    getCurrentSlotInaccurate = getCurrentSlotBlockingSum
     currentTimeSlotting = currentTimeSlottingSum
 
 instance MonadDiscovery (RealMode ssc) where

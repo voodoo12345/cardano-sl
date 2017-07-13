@@ -6,7 +6,6 @@ module Pos.Slotting.Impl.Simple
        ( SimpleSlottingMode
        , getCurrentSlotSimple
        , getCurrentSlotBlockingSimple
-       , getCurrentSlotInaccurateSimple
        , currentTimeSlottingSimple
        ) where
 
@@ -16,9 +15,8 @@ import           Mockable                    (CurrentTime, Mockable, currentTime
 import           NTP.Example                 ()
 
 import           Pos.Core.Types              (SlotId (..), Timestamp (..))
-import           Pos.Slotting.Impl.Util      (approxSlotUsingOutdated, slotFromTimestamp)
+import           Pos.Slotting.Impl.Util      (slotFromTimestamp)
 import           Pos.Slotting.MemState.Class (MonadSlotsData (..))
-import           Pos.Slotting.Types          (SlottingData (..))
 
 ----------------------------------------------------------------------------
 -- Mode
@@ -35,19 +33,12 @@ getCurrentSlotSimple = currentTimeSlottingSimple >>= slotFromTimestamp
 
 getCurrentSlotBlockingSimple :: SimpleSlottingMode m => m SlotId
 getCurrentSlotBlockingSimple = do
-    penult <- sdPenultEpoch <$> getSlottingData
+    lastIndex <- getEpochLastIndex
     getCurrentSlotSimple >>= \case
         Just slot -> pure slot
         Nothing -> do
-            waitPenultEpochEquals (penult + 1)
+            waitPenultEpochEquals lastIndex
             getCurrentSlotBlockingSimple
-
-getCurrentSlotInaccurateSimple :: SimpleSlottingMode m => m SlotId
-getCurrentSlotInaccurateSimple = do
-    penult <- sdPenultEpoch <$> getSlottingData
-    getCurrentSlotSimple >>= \case
-        Just slot -> pure slot
-        Nothing -> currentTimeSlottingSimple >>= approxSlotUsingOutdated penult
 
 currentTimeSlottingSimple :: SimpleSlottingMode m => m Timestamp
 currentTimeSlottingSimple = Timestamp <$> currentTime

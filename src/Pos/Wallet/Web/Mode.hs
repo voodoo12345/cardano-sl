@@ -50,12 +50,12 @@ import           Pos.Shutdown                  (HasShutdownContext (..))
 import           Pos.Slotting.Class            (MonadSlots (..))
 import           Pos.Slotting.Impl.Sum         (currentTimeSlottingSum,
                                                 getCurrentSlotBlockingSum,
-                                                getCurrentSlotInaccurateSum,
                                                 getCurrentSlotSum)
 import           Pos.Slotting.MemState         (HasSlottingVar (..), MonadSlotsData (..),
-                                                getSlottingDataDefault,
+                                                getEpochLastIndexDefault,
+                                                getEpochSlottingDataDefault,
                                                 getSystemStartDefault,
-                                                putSlottingDataDefault,
+                                                putEpochSlottingDataDefault,
                                                 waitPenultEpochEqualsDefault)
 import           Pos.Ssc.Class.Types           (HasSscContext (..), SscBlock)
 import           Pos.Util                      (Some (..))
@@ -154,14 +154,16 @@ instance WithPeerState WalletWebMode where
 
 instance MonadSlotsData WalletWebMode where
     getSystemStart = getSystemStartDefault
-    getSlottingData = getSlottingDataDefault
+    getEpochSlottingData = getEpochSlottingDataDefault
+    getEpochLastIndex = getEpochLastIndexDefault
     waitPenultEpochEquals = waitPenultEpochEqualsDefault
-    putSlottingData = putSlottingDataDefault
+    putEpochSlottingData = putEpochSlottingDataDefault
 
 instance MonadSlots WalletWebMode where
     getCurrentSlot = getCurrentSlotSum
     getCurrentSlotBlocking = getCurrentSlotBlockingSum
-    getCurrentSlotInaccurate = getCurrentSlotInaccurateSum
+    -- AJ: Evaluate the use of blocking instead of inaccurate
+    getCurrentSlotInaccurate = getCurrentSlotBlockingSum
     currentTimeSlotting = currentTimeSlottingSum
 
 instance MonadDiscovery WalletWebMode where

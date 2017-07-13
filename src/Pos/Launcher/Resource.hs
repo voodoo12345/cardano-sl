@@ -25,6 +25,7 @@ import           Universum                   hiding (bracket, finally)
 
 import           Control.Concurrent.STM      (newEmptyTMVarIO, newTBQueueIO)
 import           Data.Default                (def)
+import qualified Data.HashMap.Strict         as HM
 import           Data.Tagged                 (untag)
 import qualified Data.Time                   as Time
 import           Formatting                  (sformat, shown, (%))
@@ -286,8 +287,9 @@ releaseNodeContext NodeContext {..} =
 
 -- Create new 'SlottingVar' using data from DB. Probably it would be
 -- good to have it in 'infra', but it's complicated.
+-- AJ: TODO: Efficiency?
 mkSlottingVar :: (MonadIO m, MonadDBRead m) => m (TVar SlottingData)
-mkSlottingVar = newTVarIO =<< GState.getSlottingData
+mkSlottingVar = newTVarIO =<< HM.fromList <$> GState.getAllSlottingData
 
 ----------------------------------------------------------------------------
 -- Kademlia
