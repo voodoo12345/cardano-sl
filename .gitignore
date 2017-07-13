@@ -75,3 +75,12 @@ b
 .idea
 .ideaHaskellLib
 *.iml
+
+# DBs
+db-qanet
+wdb-qanet
+genesis.info
+
+# Git stuff
+*.orig
+
