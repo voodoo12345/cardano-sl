@@ -1,112 +1,179 @@
-8f7ffed16 scripts/generate/genesis.sh:  some more order in the business
-diff --git a/scripts/generate/genesis.sh b/scripts/generate/genesis.sh
-index 7d2d08846..ac55a5b09 100755
---- a/scripts/generate/genesis.sh
-+++ b/scripts/generate/genesis.sh
-@@ -2,10 +2,33 @@
- 
- # This script generates genesis files.
- # Launch it from the project root directory.
--# It will create a directory with all needed data inside. It will not 
-+# It will create a directory with all needed data inside. It will not
- # copy generated genesis files into the project, this is to be done
- # manually.
- 
-+set -e
-+
-+BUILD_MODE=stack
-+IOHKOPS_DIR=..
-+INSTALL_TOO=
-+FAKE_AVVM_ENTRIES=100
-+RICHMEN_SHARE=0.94
-+TESTNET_STAKE=19072918462000000
-+fail() { echo "ERROR: $*" >&2; exit 1;
-+}
-+while test $# -ge 1; do
-+case "$1" in
-+        --iohkops-dir )
-+                IOHKOPS_DIR="$2"; shift;;
-+        --build-mode )
-+                case "$2" in 'nix' ) true;; 'stack' ) true;; * ) error "--build-mode should be either 'nix' or 'stack'";; esac;
-+                BUILD_MODE="$2"; shift;;
-+        --install-as-suffix )
-+                case "$2" in 'tns' ) true;; 'tn' ) true;; 'qanet' ) true;; * ) error "--install-as-suffix should be either 'tn', 'tns' or 'qanet'";; esac;
-+                INSTALL_AS_SUFFIX="$2"; shift;;
-+        "--"* ) error "unknown option: $1";;
-+        * ) break;; esac; shift; done
-+
- scriptsDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"/..
- echo $scriptsDir
- outputDir="genesis-qanet-$(date +%F_%H-%M)"
-@@ -20,26 +43,54 @@ mkdir $outputDir
- utxo_file=$scriptsDir/avvm-files/utxo-dump-last-new.json
- blacklisted=$scriptsDir/avvm-files/full_blacklist.js
- 
--if [[ "$M" == "" ]]; then 
-+if [[ "$M" == "" ]]; then
-     echo "You didn't set M (rich keys amount)";
-     exit 1
- fi
--if [[ "$N" == "" ]]; then 
-+if [[ "$N" == "" ]]; then
-     echo "You didn't set N (poor keys amount)";
-     exit 1
- fi
- 
--F=100 # fake avvm keys
-+case "${BUILD_MODE}" in
-+nix )
-+        IOHKOPS_NIX=${IOHKOPS_DIR}/default.nix
-+        test -f "${IOHKOPS_NIX}" ||
-+                { echo "'${IOHKOPS_NIX}' doesn't exist, please supply a fitting --iohkops-dir" >&2; exit 1; }
-+        KEYGEN_STOREPATH="$(nix-build --no-out-link --cores 0 --max-jobs 4 -A cardano-sl-tools-static ${IOHKOPS_NIX})"
-+        test -d "${KEYGEN_STOREPATH}" ||
-+                { echo "$KEYGEN_STOREPATH doesn't exist" >&2; exit 1; }
-+        KEYGEN="${KEYGEN_STOREPATH}"/bin/cardano-keygen
-+        test -x ${KEYGEN} ||
-+                { echo "$KEYGEN doesn't exist" >&2; exit 1; }
-+        keygen=${KEYGEN};;
-+stack ) keygen="stack exec cardano-keygen --";;
-+esac
- 
- # print commit
- git show HEAD --oneline | tee $outputDir/genesisCreation.log
- 
--keygenCmd="stack exec cardano-keygen -- generate-genesis --genesis-dir $outputDir -m $M -n $N --richmen-share 0.94 --testnet-stake 19072918462000000 --utxo-file $utxo_file --blacklisted $blacklisted --fake-avvm-entries $F"
-+keygenCmd="${keygen} generate-genesis --genesis-dir $outputDir -m $M -n $N --richmen-share ${RICHMEN_SHARE} --testnet-stake ${TESTNET_STAKE} --utxo-file $utxo_file --blacklisted $blacklisted --fake-avvm-entries ${FAKE_AVVM_ENTRIES}"
- echo "Running command: $keygenCmd"
- $keygenCmd |& tee -a $outputDir/genesisCreation.log
- 
- echo "Cleaning up"
--find $outputDir -name "*.lock" | xargs rm 
-+find $outputDir -name "*.lock" | xargs rm
- 
- echo "Creating archive"
- tar -czf "$outputDir.tgz" $outputDir
-+
-+if test -z "${INSTALL_AS_SUFFIX}"; then exit 0; fi
-+echo "Installing genesis with suffix '${INSTALL_AS_SUFFIX}'"
-+
-+gencore="core/genesis-core-${INSTALL_AS_SUFFIX}.bin"
-+gentoss="godtossing/genesis-godtossing-${INSTALL_AS_SUFFIX}.bin"
-+geninfo="genesis-info/${INSTALL_AS_SUFFIX}.log"
-+cp "${outputDir}"/genesis-core.bin       "${gencore}"
-+cp "${outputDir}"/genesis-godtossing.bin "${gentoss}"
-+cp "${outputDir}"/genesisCreation.log    "${geninfo}"
-+
-+echo "Genesis installed:"
-+ls -l "${gencore}"
-+ls -l "${gentoss}"
-+ls -l "${geninfo}"
+ccfebcf06 genesis:  regenerate, as per new, crc-enabled genesis format
+diff --git a/core/genesis-core-tns.bin b/core/genesis-core-tns.bin
+index dc15cb8db..40ad21412 100644
+Binary files a/core/genesis-core-tns.bin and b/core/genesis-core-tns.bin differ
+diff --git a/genesis-info/tns.log b/genesis-info/tns.log
+index 4303961b8..901691c0b 100644
+--- a/genesis-info/tns.log
++++ b/genesis-info/tns.log
+@@ -1,56 +1,112 @@
+-c1370f431 Generate genesis for tns
+-diff --git a/core/constants.yaml b/core/constants.yaml
+-index 2b91d47b9..b3044e170 100644
+---- a/core/constants.yaml
+-+++ b/core/constants.yaml
+-@@ -151,8 +151,10 @@ testnet: &testnet
++8f7ffed16 scripts/generate/genesis.sh:  some more order in the business
++diff --git a/scripts/generate/genesis.sh b/scripts/generate/genesis.sh
++index 7d2d08846..ac55a5b09 100755
++--- a/scripts/generate/genesis.sh
+++++ b/scripts/generate/genesis.sh
++@@ -2,10 +2,33 @@
+  
+-   genesisBinSuffix: tn
++ # This script generates genesis files.
++ # Launch it from the project root directory.
++-# It will create a directory with all needed data inside. It will not 
+++# It will create a directory with all needed data inside. It will not
++ # copy generated genesis files into the project, this is to be done
++ # manually.
+  
+++set -e
+ +
+- testnet_staging: &testnet_staging
+-   <<: *testnet
+-+  k: 108
+-   protocolMagic: 60987900
+-   genesisBinSuffix: tns
+- 
+-diff --git a/core/genesis-core-tns.bin b/core/genesis-core-tns.bin
+-new file mode 100644
+-index 000000000..6a0245261
+-Binary files /dev/null and b/core/genesis-core-tns.bin differ
+-diff --git a/genesis-info/tns.log b/genesis-info/tns.log
+-new file mode 100644
+-index 000000000..eda66b3b4
+---- /dev/null
+-+++ b/genesis-info/tns.log
+-@@ -0,0 +1,14 @@
+-+e743ac30a Merge pull request #1259 from input-output-hk/alfredo/csl-1453-remove-redundant-deps
+++BUILD_MODE=stack
+++IOHKOPS_DIR=..
+++INSTALL_TOO=
+++FAKE_AVVM_ENTRIES=100
+++RICHMEN_SHARE=0.94
+++TESTNET_STAKE=19072918462000000
+++fail() { echo "ERROR: $*" >&2; exit 1;
+++}
+++while test $# -ge 1; do
+++case "$1" in
+++        --iohkops-dir )
+++                IOHKOPS_DIR="$2"; shift;;
+++        --build-mode )
+++                case "$2" in 'nix' ) true;; 'stack' ) true;; * ) error "--build-mode should be either 'nix' or 'stack'";; esac;
+++                BUILD_MODE="$2"; shift;;
+++        --install-as-suffix )
+++                case "$2" in 'tns' ) true;; 'tn' ) true;; 'qanet' ) true;; * ) error "--install-as-suffix should be either 'tn', 'tns' or 'qanet'";; esac;
+++                INSTALL_AS_SUFFIX="$2"; shift;;
+++        "--"* ) error "unknown option: $1";;
+++        * ) break;; esac; shift; done
+ +
+-+[94m[keygen:INFO:ThreadId 4] [0mProcessing command
+-+[94m[keygen:INFO:ThreadId 4] [0mGenerating requested raw data
+-+[94m[keygen:INFO:ThreadId 4] [0mGenerating avvm data
+-+[94m[keygen:INFO:ThreadId 4] [0mRemoving 101 entries from utxo (out of 188 total entries in the blacklist)
+-+[94m[keygen:INFO:ThreadId 4] [0mTotal avvm stake after applying blacklist: 25927070538000000
+-+[94m[keygen:INFO:ThreadId 4] [0mGenerating fake avvm data into genesis-qanet-2017-08-04_19-28/keys-fakeavvm
+-+[94m[keygen:INFO:ThreadId 4] [0m100 fake avvm seeds are generated
+-+[94m[keygen:INFO:ThreadId 4] [0mGenerating testnet data into genesis-qanet-2017-08-04_19-28/keys-testnet
+-+[94m[keygen:INFO:ThreadId 4] [0m1212 keyfiles are generated
+-+[94m[keygen:INFO:ThreadId 4] [0mtestnet genesis created successfully. First 10 addresses: [PubKeyAddress ed2b014d53889a1153a712fbb2630452f46cc92963597a3a7fe1c972 (attrs: {}), PubKeyAddress 0312b8b016cb6084316721aa71aaca9b3d38a319859fc5028e5147f9 (attrs: {}), PubKeyAddress 889620fec24039ae478a273814d07ff11dcb35d48ea1f7fb5b35b3ba (attrs: {}), PubKeyAddress 043e68f2058c5d30a85839ddf4532ba97e8721447fc66d6b5a60793d (attrs: {}), PubKeyAddress 391d2a755341c0527eb59ed07b03d6ab10130ca78005b5f014647c26 (attrs: {}), PubKeyAddress 5d4b9b58ec2bbc295578ee6ced5d53a435ef8f8f6796beaf6a0ebafd (attrs: {}), PubKeyAddress d8259372cfed45644ae97050c95d31bcfb399671b43656d0449d15c7 (attrs: {}), PubKeyAddress 4228c301c88e538548defcaff8abc6c5b9d4042557ad1929f9c1f997 (attrs: {}), PubKeyAddress 4cc255a9ee78981202718ed66be44e3aef885fc1f72bffe0f647b3d5 (attrs: {}), PubKeyAddress cf55457ee9f751d65980925f031763647323fe8cbec159f87a045e22 (attrs: {})] distr: RichPoorStakes {sdRichmen = 12, sdRichStake = Coin {getCoin = 1494045279523334}, sdPoor = 2400, sdPoorStake = Coin {getCoin = 476822961549}}
+-+[94m[keygen:INFO:ThreadId 4] [0mgenesis-core.bin generated successfully
+-+[94m[keygen:INFO:ThreadId 4] [0mgenesis-godtossing.bin generated successfully
+-diff --git a/godtossing/genesis-godtossing-tns.bin b/godtossing/genesis-godtossing-tns.bin
+-new file mode 100644
+-index 000000000..94ab93de6
+-Binary files /dev/null and b/godtossing/genesis-godtossing-tns.bin differ
++ scriptsDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"/..
++ echo $scriptsDir
++ outputDir="genesis-qanet-$(date +%F_%H-%M)"
++@@ -20,26 +43,54 @@ mkdir $outputDir
++ utxo_file=$scriptsDir/avvm-files/utxo-dump-last-new.json
++ blacklisted=$scriptsDir/avvm-files/full_blacklist.js
++ 
++-if [[ "$M" == "" ]]; then 
+++if [[ "$M" == "" ]]; then
++     echo "You didn't set M (rich keys amount)";
++     exit 1
++ fi
++-if [[ "$N" == "" ]]; then 
+++if [[ "$N" == "" ]]; then
++     echo "You didn't set N (poor keys amount)";
++     exit 1
++ fi
++ 
++-F=100 # fake avvm keys
+++case "${BUILD_MODE}" in
+++nix )
+++        IOHKOPS_NIX=${IOHKOPS_DIR}/default.nix
+++        test -f "${IOHKOPS_NIX}" ||
+++                { echo "'${IOHKOPS_NIX}' doesn't exist, please supply a fitting --iohkops-dir" >&2; exit 1; }
+++        KEYGEN_STOREPATH="$(nix-build --no-out-link --cores 0 --max-jobs 4 -A cardano-sl-tools-static ${IOHKOPS_NIX})"
+++        test -d "${KEYGEN_STOREPATH}" ||
+++                { echo "$KEYGEN_STOREPATH doesn't exist" >&2; exit 1; }
+++        KEYGEN="${KEYGEN_STOREPATH}"/bin/cardano-keygen
+++        test -x ${KEYGEN} ||
+++                { echo "$KEYGEN doesn't exist" >&2; exit 1; }
+++        keygen=${KEYGEN};;
+++stack ) keygen="stack exec cardano-keygen --";;
+++esac
++ 
++ # print commit
++ git show HEAD --oneline | tee $outputDir/genesisCreation.log
++ 
++-keygenCmd="stack exec cardano-keygen -- generate-genesis --genesis-dir $outputDir -m $M -n $N --richmen-share 0.94 --testnet-stake 19072918462000000 --utxo-file $utxo_file --blacklisted $blacklisted --fake-avvm-entries $F"
+++keygenCmd="${keygen} generate-genesis --genesis-dir $outputDir -m $M -n $N --richmen-share ${RICHMEN_SHARE} --testnet-stake ${TESTNET_STAKE} --utxo-file $utxo_file --blacklisted $blacklisted --fake-avvm-entries ${FAKE_AVVM_ENTRIES}"
++ echo "Running command: $keygenCmd"
++ $keygenCmd |& tee -a $outputDir/genesisCreation.log
++ 
++ echo "Cleaning up"
++-find $outputDir -name "*.lock" | xargs rm 
+++find $outputDir -name "*.lock" | xargs rm
++ 
++ echo "Creating archive"
++ tar -czf "$outputDir.tgz" $outputDir
+++
+++if test -z "${INSTALL_AS_SUFFIX}"; then exit 0; fi
+++echo "Installing genesis with suffix '${INSTALL_AS_SUFFIX}'"
+++
+++gencore="core/genesis-core-${INSTALL_AS_SUFFIX}.bin"
+++gentoss="godtossing/genesis-godtossing-${INSTALL_AS_SUFFIX}.bin"
+++geninfo="genesis-info/${INSTALL_AS_SUFFIX}.log"
+++cp "${outputDir}"/genesis-core.bin       "${gencore}"
+++cp "${outputDir}"/genesis-godtossing.bin "${gentoss}"
+++cp "${outputDir}"/genesisCreation.log    "${geninfo}"
+++
+++echo "Genesis installed:"
+++ls -l "${gencore}"
+++ls -l "${gentoss}"
+++ls -l "${geninfo}"
+ [94m[keygen:INFO:ThreadId 4] [0mProcessing command
+ [94m[keygen:INFO:ThreadId 4] [0mGenerating requested raw data
+ [94m[keygen:INFO:ThreadId 4] [0mGenerating avvm data
+ [94m[keygen:INFO:ThreadId 4] [0mRemoving 101 entries from utxo (out of 188 total entries in the blacklist)
+ [94m[keygen:INFO:ThreadId 4] [0mTotal avvm stake after applying blacklist: 25927070538000000
+-[94m[keygen:INFO:ThreadId 4] [0mGenerating fake avvm data into genesis-qanet-2017-08-04_21-21/keys-fakeavvm
++[94m[keygen:INFO:ThreadId 4] [0mGenerating fake avvm data into genesis-qanet-2017-08-09_13-22/keys-fakeavvm
+ [94m[keygen:INFO:ThreadId 4] [0m100 fake avvm seeds are generated
+-[94m[keygen:INFO:ThreadId 4] [0mGenerating testnet data into genesis-qanet-2017-08-04_21-21/keys-testnet
++[94m[keygen:INFO:ThreadId 4] [0mGenerating testnet data into genesis-qanet-2017-08-09_13-22/keys-testnet
+ [94m[keygen:INFO:ThreadId 4] [0m1214 keyfiles are generated
+-[94m[keygen:INFO:ThreadId 4] [0mtestnet genesis created successfully. First 10 addresses: [PubKeyAddress dd2b785decb0a3206f4431b7405e6505d8e2ed1666876192f7e942a4 (attrs: {}), PubKeyAddress 881b5b6d099147bdc49fa94929436e7accfd29f8a9111e61c6a1a910 (attrs: {}), PubKeyAddress f64cb528bb9817480aa44d022115d55079419bfb51eb7d65362b0d97 (attrs: {}), PubKeyAddress 5cc91fad756cdbaf9e381e2655da874598c664da0e8cccc05a002785 (attrs: {}), PubKeyAddress 4bf60c0f8b487c1e8dda7853e6bfdc1e426c7b37db2f414b7e7d6aff (attrs: {}), PubKeyAddress 45dd2271cc3f990ad2e8f258b1ccfc4de60f1faf0cf5ebf40d9b035b (attrs: {}), PubKeyAddress 5337ce984849d9c059affc6a28f220cd5046a3d31fb2c1fb0ef55ae9 (attrs: {}), PubKeyAddress c308e8070a6da95bf4850b86340e68c0ab1d4642f79b7553c2fdfbba (attrs: {}), PubKeyAddress f710212451d4d5035049771cbc504be385e8824891ef7f01f90aef5c (attrs: {}), PubKeyAddress e05563bb7f6f2c2673b8a49235bb9ed37109ad70ebffd96b757d5ccc (attrs: {})] distr: RichPoorStakes {sdRichmen = 14, sdRichStake = Coin {getCoin = 1280610239591429}, sdPoor = 2400, sdPoorStake = Coin {getCoin = 476822961549}}
++[94m[keygen:INFO:ThreadId 4] [0mtestnet genesis created successfully. First 10 addresses: [PubKeyAddress c0ac2299a036aaf3184067b9497a1bb42395b3b3b38d5f6a14591122 (attrs: {}), PubKeyAddress 6b6b579c3f82c47eb53c54a9d8ca09d2ab5603efd0688a4d74855b34 (attrs: {}), PubKeyAddress dc723dcb425b39780f18c9a458ed89483daa2c00c3be1e0e76087a75 (attrs: {}), PubKeyAddress 5d4bef578bfd8893efd6b1ed89cce11c6340c12d067845c2fbaad175 (attrs: {}), PubKeyAddress b11907d963215ed765b6bbbae9aa19b2b15dd7d888b5f9d66b7a0016 (attrs: {}), PubKeyAddress de2814d6eaa2e4bf380dfbec4bdeee3f6bede76a2200d6882556ec21 (attrs: {}), PubKeyAddress 8bc35b1330cbd7412cff7f40f0e56651ce12f510334f491a3e77c668 (attrs: {}), PubKeyAddress 8be192263fde9a934f3f615d7e92cdfaeea77b8a6dc0320720a4be5e (attrs: {}), PubKeyAddress 3f01af3cbf3c21a7779cf22de2ef62e0c2a016348f1acc1206412c41 (attrs: {}), PubKeyAddress 5c1418f6c6fdb3bd09cd25ebe3aeedb9aa965474c614fec8bcf8558f (attrs: {})] distr: RichPoorStakes {sdRichmen = 14, sdRichStake = Coin {getCoin = 1280610239591429}, sdPoor = 2400, sdPoorStake = Coin {getCoin = 476822961549}}
+ [94m[keygen:INFO:ThreadId 4] [0mgenesis-core.bin generated successfully
+ [94m[keygen:INFO:ThreadId 4] [0mgenesis-godtossing.bin generated successfully
+diff --git a/godtossing/genesis-godtossing-tns.bin b/godtossing/genesis-godtossing-tns.bin
+index 9fe716845..6a2c2767e 100644
+Binary files a/godtossing/genesis-godtossing-tns.bin and b/godtossing/genesis-godtossing-tns.bin differ
 [94m[keygen:INFO:ThreadId 4] [0mProcessing command
 [94m[keygen:INFO:ThreadId 4] [0mGenerating requested raw data
 [94m[keygen:INFO:ThreadId 4] [0mGenerating avvm data
 [94m[keygen:INFO:ThreadId 4] [0mRemoving 101 entries from utxo (out of 188 total entries in the blacklist)
 [94m[keygen:INFO:ThreadId 4] [0mTotal avvm stake after applying blacklist: 25927070538000000
-[94m[keygen:INFO:ThreadId 4] [0mGenerating fake avvm data into genesis-qanet-2017-08-09_13-22/keys-fakeavvm
+[94m[keygen:INFO:ThreadId 4] [0mGenerating fake avvm data into genesis-qanet-2017-08-09_19-44/keys-fakeavvm
 [94m[keygen:INFO:ThreadId 4] [0m100 fake avvm seeds are generated
-[94m[keygen:INFO:ThreadId 4] [0mGenerating testnet data into genesis-qanet-2017-08-09_13-22/keys-testnet
-[94m[keygen:INFO:ThreadId 4] [0m1214 keyfiles are generated
-[94m[keygen:INFO:ThreadId 4] [0mtestnet genesis created successfully. First 10 addresses: [PubKeyAddress c0ac2299a036aaf3184067b9497a1bb42395b3b3b38d5f6a14591122 (attrs: {}), PubKeyAddress 6b6b579c3f82c47eb53c54a9d8ca09d2ab5603efd0688a4d74855b34 (attrs: {}), PubKeyAddress dc723dcb425b39780f18c9a458ed89483daa2c00c3be1e0e76087a75 (attrs: {}), PubKeyAddress 5d4bef578bfd8893efd6b1ed89cce11c6340c12d067845c2fbaad175 (attrs: {}), PubKeyAddress b11907d963215ed765b6bbbae9aa19b2b15dd7d888b5f9d66b7a0016 (attrs: {}), PubKeyAddress de2814d6eaa2e4bf380dfbec4bdeee3f6bede76a2200d6882556ec21 (attrs: {}), PubKeyAddress 8bc35b1330cbd7412cff7f40f0e56651ce12f510334f491a3e77c668 (attrs: {}), PubKeyAddress 8be192263fde9a934f3f615d7e92cdfaeea77b8a6dc0320720a4be5e (attrs: {}), PubKeyAddress 3f01af3cbf3c21a7779cf22de2ef62e0c2a016348f1acc1206412c41 (attrs: {}), PubKeyAddress 5c1418f6c6fdb3bd09cd25ebe3aeedb9aa965474c614fec8bcf8558f (attrs: {})] distr: RichPoorStakes {sdRichmen = 14, sdRichStake = Coin {getCoin = 1280610239591429}, sdPoor = 2400, sdPoorStake = Coin {getCoin = 476822961549}}
+[94m[keygen:INFO:ThreadId 4] [0mGenerating testnet data into genesis-qanet-2017-08-09_19-44/keys-testnet
+[94m[keygen:INFO:ThreadId 4] [0m1207 keyfiles are generated
+[94m[keygen:INFO:ThreadId 4] [0mtestnet genesis created successfully. First 10 addresses: [PubKeyAddress 0d6c440010752b54e99c68bd4237e6dc8d86d3939deaa170ca2063be (attrs: {}), PubKeyAddress be79cf04fb314f80d395eb8a0c2885b1b652cad95189c749a3a77f8b (attrs: {}), PubKeyAddress bf5dfcc1e3a71ede32fd8b783e3b38bc8de92bc292e03b7f0583062d (attrs: {}), PubKeyAddress c70ac821713b366fd4a4cdb87261e1ea64c161f4158d74bf34660671 (attrs: {}), PubKeyAddress 2bd02c7de276cca4b02bfe2b7e7112d8c4863218b887c535afbc9999 (attrs: {}), PubKeyAddress 23b6857c4ee932f08bd5c6bd5b1011eb144ab52f7ad2a85db8c6325e (attrs: {}), PubKeyAddress ccf6b7abd9e4abe3e414f38fd9aed2c32efaedc6af592e1463ef0f6d (attrs: {}), PubKeyAddress 431a8c864a6c2a6ad0602db52c4b7b468e2cf3358a6946d71d1c1ef2 (attrs: {}), PubKeyAddress caabeae9b72770cadf9364304b183f0382a7d80f19fe9d59b3c66b39 (attrs: {}), PubKeyAddress 845e4fd7e74d5164d35fb1b7e20f7ef9212801fa0ea7aa61b3c49cd9 (attrs: {})] distr: RichPoorStakes {sdRichmen = 7, sdRichStake = Coin {getCoin = 2561220479182857}, sdPoor = 2400, sdPoorStake = Coin {getCoin = 476822961550}}
 [94m[keygen:INFO:ThreadId 4] [0mgenesis-core.bin generated successfully
 [94m[keygen:INFO:ThreadId 4] [0mgenesis-godtossing.bin generated successfully
