@@ -106,6 +106,7 @@ lrcSingleShot
 lrcSingleShot epoch =
     lrcSingleShotImpl @ssc withBlkSemaphore_ epoch (allLrcConsumers @ssc)
 
+
 -- | Same, but doesn't take lock on the semaphore.
 lrcSingleShotNoLock
     :: forall ssc ctx m. (LrcModeFullNoSemaphore ssc ctx m)
@@ -172,6 +173,7 @@ lrcDo epoch consumers tip = tip <$ do
     case nonEmpty blundsList of
         Nothing -> throwM UnknownBlocksForLrc
         Just (NewestFirst -> blunds) ->
+            (`catch` \(e :: SomeException) -> error ("lol mda: " <> show e)) $
             withBlocksRolledBack blunds $ do
                 issuersComputationDo epoch
                 richmenComputationDo epoch consumers
