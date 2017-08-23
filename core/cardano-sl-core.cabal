@@ -107,6 +107,7 @@ library
                        Pos.Util.LRU
                        Pos.Util.Mnemonics
                        Pos.Util.Modifier
+                       Pos.Util.PrioLock
                        Pos.Util.Util
 
   other-modules:
@@ -127,6 +128,7 @@ library
                      , concurrent-extra
                      , ether >= 0.5
                      , exceptions
+                     , lifted-base
                      , log-warper >= 1.0.3
                      , mmorph
                      , reflection
@@ -158,6 +160,7 @@ library
                      , lens
                      , lrucache
                      , memory
+                     , monad-control
                      , mtl
                      , node-sketch
                      , parsec
