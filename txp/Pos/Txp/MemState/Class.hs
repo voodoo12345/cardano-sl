@@ -15,6 +15,7 @@ module Pos.Txp.MemState.Class
        , getLocalTxsMap
        , getTxpExtra
        , modifyTxpLocalData
+       , modifyTxpLocalData_
        , setTxpLocalData
        , clearTxpMemPool
        , withMemPoolLock

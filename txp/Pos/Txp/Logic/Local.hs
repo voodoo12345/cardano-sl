@@ -21,14 +21,14 @@ import           Formatting                  (build, sformat, (%))
 import           System.Wlog                 (WithLogger, logDebug)
 
 import           Pos.Core                    (BlockVersionData, EpochIndex,
-                                              GenesisWStakeholders, HeaderHash, siEpoch)
+                                              GenesisWStakeholders, siEpoch)
 import           Pos.DB.Class                (MonadDBRead, MonadGState (..))
 import qualified Pos.DB.GState.Common        as GS
 import           Pos.Slotting                (MonadSlots (..))
 import           Pos.Txp.Core                (Tx (..), TxAux (..), TxId, TxUndo)
 import           Pos.Txp.MemState            (MonadTxpMem, TxpLocalDataPure, getLocalTxs,
-                                              getUtxoModifier, modifyTxpLocalData,
-                                              setTxpLocalData)
+                                              getUtxoModifier, modifyTxpLocalData_,
+                                              setTxpLocalData, withMemPoolLock)
 import           Pos.Txp.Toil                (GenericToilModifier (..),
                                               MonadUtxoRead (..), ToilModifier, ToilT,
                                               ToilVerFailure (..), ToilVerFailure (..),
@@ -80,7 +80,6 @@ txProcessTransaction
     => (TxId, TxAux) -> ExceptT ToilVerFailure m ()
 txProcessTransaction itw@(txId, txAux) = do
     let UnsafeTx {..} = taTx txAux
-    tipDB <- GS.getTip
     bvd <- gsAdoptedBVData
     epoch <- siEpoch <$> (note ToilSlotUnknown =<< getCurrentSlot)
     bootHolders <- view (lensOf @GenesisWStakeholders)
@@ -104,11 +103,29 @@ txProcessTransaction itw@(txId, txAux) = do
             , _ptcAdoptedBVData = bvd
             , _ptcUtxoBase = resolved
             }
-    pRes <-
-        lift $
-        modifyTxpLocalData "txProcessTransaction"
-            (processTxDo epoch ctx tipDB itw)
-            PL.Low
+    pRes <- lift $ withMemPoolLock "txProcessTransaction" PL.Low $ do
+        tipDB <- GS.getTip
+        let
+            processTxDo ::
+                EpochIndex
+                -> (TxId, TxAux)
+                -> TxpLocalDataPure
+                -> (Either ToilVerFailure (), TxpLocalDataPure)
+            processTxDo curEpoch tx txld@(uv, mp, undo, tip, ())
+                | tipDB /= tip = (Left $ ToilTipsMismatch tipDB tip, txld)
+                | otherwise =
+                      let action :: ExceptT ToilVerFailure (ToilT () ProcessTxMode) TxUndo
+                          action = processTx curEpoch tx
+                          res :: (Either ToilVerFailure TxUndo, ToilModifier)
+                          res =
+                              usingReader ctx $
+                              runToilTLocal uv mp undo $ runExceptT action
+                      in case res of
+                          (Left er, _) -> (Left er, txld)
+                          (Right _, ToilModifier {..}) ->
+                              ( Right ()
+                              , (_tmUtxo, _tmMemPool, _tmUndos, tip, _tmExtra))
+        modifyTxpLocalData_ $ processTxDo epoch itw
     case pRes of
         Left er -> do
             logDebug $ sformat ("Transaction processing failed: " %build) txId
@@ -116,28 +133,6 @@ txProcessTransaction itw@(txId, txAux) = do
         Right _ ->
             logDebug
                 (sformat ("Transaction is processed successfully: " %build) txId)
-  where
-    processTxDo ::
-           EpochIndex
-        -> ProcessTxContext
-        -> HeaderHash
-        -> (TxId, TxAux)
-        -> TxpLocalDataPure
-        -> (Either ToilVerFailure (), TxpLocalDataPure)
-    processTxDo curEpoch ctx tipDB tx txld@(uv, mp, undo, tip, ())
-        | tipDB /= tip = (Left $ ToilTipsMismatch tipDB tip, txld)
-        | otherwise =
-            let action :: ExceptT ToilVerFailure (ToilT () ProcessTxMode) TxUndo
-                action = processTx curEpoch tx
-                res :: (Either ToilVerFailure TxUndo, ToilModifier)
-                res =
-                    usingReader ctx $
-                    runToilTLocal uv mp undo $ runExceptT action
-            in case res of
-                   (Left er, _) -> (Left er, txld)
-                   (Right _, ToilModifier {..}) ->
-                       ( Right ()
-                       , (_tmUtxo, _tmMemPool, _tmUndos, tip, _tmExtra))
 
 -- | 1. Recompute UtxoView by current MemPool
 -- | 2. Remove invalid transactions from MemPool

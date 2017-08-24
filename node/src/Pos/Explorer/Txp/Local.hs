@@ -19,7 +19,7 @@ import           Formatting                  (build, sformat, (%))
 import           System.Wlog                 (WithLogger, logDebug)
 
 import           Pos.Core                    (BlockVersionData, EpochIndex,
-                                              GenesisWStakeholders, HeaderHash, Timestamp,
+                                              GenesisWStakeholders,
                                               siEpoch)
 import           Pos.DB.Class                (MonadDBRead, MonadGState (..))
 import qualified Pos.Explorer.DB             as ExDB
@@ -29,8 +29,8 @@ import           Pos.Txp.Core                (Tx (..), TxAux (..), TxId, toaOut,
                                               txOutAddress)
 import           Pos.Txp.MemState            (GenericTxpLocalDataPure, MonadTxpMem,
                                               getLocalTxsMap, getTxpExtra,
-                                              getUtxoModifier, modifyTxpLocalData,
-                                              setTxpLocalData)
+                                              getUtxoModifier, modifyTxpLocalData_,
+                                              setTxpLocalData, withMemPoolLock)
 import           Pos.Txp.Toil                (GenericToilModifier (..),
                                               MonadUtxoRead (..), ToilT,
                                               ToilVerFailure (..), Utxo, runDBToil,
@@ -95,7 +95,6 @@ eTxProcessTransaction
     :: ETxpLocalWorkMode ctx m
     => (TxId, TxAux) -> ExceptT ToilVerFailure m ()
 eTxProcessTransaction itw@(txId, TxAux {taTx = UnsafeTx {..}}) = do
-    tipBefore <- GS.getTip
     localUM <- lift getUtxoModifier
     epoch <- siEpoch <$> (note ToilSlotUnknown =<< getCurrentSlot)
     genStks <- view (lensOf @GenesisWStakeholders)
@@ -132,11 +131,38 @@ eTxProcessTransaction itw@(txId, TxAux {taTx = UnsafeTx {..}}) = do
             , _eptcUtxoBase = resolved
             , _eptcGenStakeholders = genStks
             }
-    pRes <-
-        lift $
-        modifyTxpLocalData "eTxProcessTransaction"
-            (processTxDo epoch ctx tipBefore itw curTime)
-            PL.Low
+    pRes <- lift $ withMemPoolLock "eTxProcessTransaction" PL.Low $ do
+        tipBefore <- GS.getTip
+        let
+            processTxDo ::
+                   EpochIndex
+                -> EProcessTxContext
+                -> (TxId, TxAux)
+                -> ETxpLocalDataPure
+                -> (Either ToilVerFailure (), ETxpLocalDataPure)
+            processTxDo curEpoch EProcessTxContext{..} tx txld@(uv, mp, undo, tip, extra)
+                | tipBefore /= tip = (Left $ ToilTipsMismatch tipBefore tip, txld)
+                | otherwise =
+                    let runToil ::
+                               Functor m
+                            => ToilT ExplorerExtra m a
+                            -> m (a, GenericToilModifier ExplorerExtra)
+                        runToil = runToilTLocalExtra uv mp undo extra
+                        action ::
+                               ExceptT ToilVerFailure (ToilT ExplorerExtra EProcessTxMode) ()
+                        action = eProcessTx curEpoch tx (TxExtra Nothing curTime txUndo)
+                        -- NE.fromList is safe here, because if `resolved` is empty, `processTx`
+                        -- wouldn't save extra value, thus wouldn't reduce it to NF
+                        txUndo = NE.fromList $ toList _eptcUtxoBase
+                        res :: ( Either ToilVerFailure ()
+                               , GenericToilModifier ExplorerExtra)
+                        res = usingReader ctx $ runToil $ runExceptT action
+                    in case res of
+                           (Left er, _) -> (Left er, txld)
+                           (Right (), ToilModifier {..}) ->
+                               ( Right ()
+                               , (_tmUtxo, _tmMemPool, _tmUndos, tip, _tmExtra))
+        modifyTxpLocalData_ $ processTxDo epoch ctx itw
     case pRes of
         Left er -> do
             logDebug $ sformat ("Transaction processing failed: " %build) txId
@@ -145,36 +171,6 @@ eTxProcessTransaction itw@(txId, TxAux {taTx = UnsafeTx {..}}) = do
             logDebug $
             sformat ("Transaction is processed successfully: " %build) txId
   where
-    processTxDo ::
-           EpochIndex
-        -> EProcessTxContext
-        -> HeaderHash
-        -> (TxId, TxAux)
-        -> Timestamp
-        -> ETxpLocalDataPure
-        -> (Either ToilVerFailure (), ETxpLocalDataPure)
-    processTxDo curEpoch ctx@EProcessTxContext {..} tipBefore tx curTime txld@(uv, mp, undo, tip, extra)
-        | tipBefore /= tip = (Left $ ToilTipsMismatch tipBefore tip, txld)
-        | otherwise =
-            let runToil ::
-                       Functor m
-                    => ToilT ExplorerExtra m a
-                    -> m (a, GenericToilModifier ExplorerExtra)
-                runToil = runToilTLocalExtra uv mp undo extra
-                action ::
-                       ExceptT ToilVerFailure (ToilT ExplorerExtra EProcessTxMode) ()
-                action = eProcessTx curEpoch tx (TxExtra Nothing curTime txUndo)
-                -- NE.fromList is safe here, because if `resolved` is empty, `processTx`
-                -- wouldn't save extra value, thus wouldn't reduce it to NF
-                txUndo = NE.fromList $ toList _eptcUtxoBase
-                res :: ( Either ToilVerFailure ()
-                       , GenericToilModifier ExplorerExtra)
-                res = usingReader ctx $ runToil $ runExceptT action
-            in case res of
-                   (Left er, _) -> (Left er, txld)
-                   (Right (), ToilModifier {..}) ->
-                       ( Right ()
-                       , (_tmUtxo, _tmMemPool, _tmUndos, tip, _tmExtra))
     runUM um = runToilTLocalExtra um def mempty (def @ExplorerExtra)
     buildMap :: (Eq a, Hashable a) => [a] -> [Maybe b] -> HM.HashMap a b
     buildMap keys maybeValues =
