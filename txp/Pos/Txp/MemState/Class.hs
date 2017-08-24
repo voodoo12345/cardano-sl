@@ -28,7 +28,7 @@ import           Data.Default                (Default (def))
 import qualified Data.HashMap.Strict         as HM
 import           Ether.Internal              (HasLens (..))
 import           Mockable                    (CurrentTime, Mockable, currentTime)
-import           System.Wlog                 (WithLogger, getLoggerName, usingLoggerName)
+import           System.Wlog                 (WithLogger, getLoggerName, logDebug, usingLoggerName)
 
 import           Pos.Txp.Core.Types          (TxAux, TxId, TxUndo)
 import           Pos.Txp.MemState.Types      (GenericTxpLocalData (..),
@@ -98,18 +98,19 @@ withMemPoolLock :: (WithLogger m, MonadIO m, MonadBaseControl IO m, MonadTxpMem 
     -> m a
 withMemPoolLock reason prio cont = askTxpMemAndMetrics >>= \(TxpLocalData{..}, TxpMetrics{..}) -> do
     lname <- getLoggerName
-    liftIO . usingLoggerName lname $ txpMetricsWait reason
+    let doLog = liftIO . usingLoggerName lname
+    doLog $ txpMetricsWait reason
     timeBeginWait <- currentTime
     PL.withPrioLock txpMemPoolLock prio $ do
+        logDebug . toText $ "Taking MemPoolLock for " ++ reason
         timeEndWait <- currentTime
-        liftIO . usingLoggerName lname $
-            txpMetricsAcquire (timeEndWait - timeBeginWait)
+        doLog $ txpMetricsAcquire (timeEndWait - timeBeginWait)
         timeBeginModify <- currentTime
         res <- cont
         timeEndModify <- currentTime
         newMemPoolSize <- _mpSize <$> (atomically $ STM.readTVar txpMemPool)
-        liftIO . usingLoggerName lname $
-            txpMetricsRelease (timeEndModify - timeBeginModify) newMemPoolSize
+        doLog $ txpMetricsRelease (timeEndModify - timeBeginModify) newMemPoolSize
+        logDebug . toText $ "Releasing MemPoolLock for " ++ reason
         pure res
 
 -- | Modify the contents of the mempool.

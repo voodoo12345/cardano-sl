@@ -125,7 +125,7 @@ createGenesisBlockAndApply epoch =
         Left UnknownBlocksForLrc ->
             Nothing <$ logInfo "createGenesisBlock: not enough blocks for LRC"
         Left err -> throwM err
-        Right leaders -> withMemPoolLock "txNormalize" PL.High $
+        Right leaders -> withMemPoolLock "createGenesisBlockAndApply" PL.High $
             withBlkSemaphore (createGenesisBlockDo epoch leaders)
 
 createGenesisBlockDo
@@ -195,7 +195,7 @@ createMainBlockAndApply ::
     => SlotId
     -> ProxySKBlockInfo
     -> m (Either Text (MainBlock ssc))
-createMainBlockAndApply sId pske = withMemPoolLock "txNormalize" PL.High $
+createMainBlockAndApply sId pske = withMemPoolLock "createMainBlockAndApply" PL.High $
     reportingFatal $ withBlkSemaphore createAndApply
   where
     createAndApply tip =
