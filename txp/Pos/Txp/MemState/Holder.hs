@@ -16,6 +16,7 @@ import           Pos.DB.Class           (MonadDBRead)
 import           Pos.DB.GState.Common   (getTip)
 import           Pos.Txp.MemState.Class (TxpHolderTag)
 import           Pos.Txp.MemState.Types (GenericTxpLocalData (..))
+import           Pos.Util.PrioLock      (newPrioLock)
 
 ----------------------------------------------------------------------------
 -- Holder
@@ -28,4 +29,5 @@ mkTxpLocalData = do
     initTip <- getTip
     TxpLocalData <$> newTVarIO mempty <*> newTVarIO def <*> newTVarIO mempty <*>
         newTVarIO initTip <*>
-        newTVarIO def
+        newTVarIO def <*>
+        newPrioLock

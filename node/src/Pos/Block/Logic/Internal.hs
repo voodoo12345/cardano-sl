@@ -134,6 +134,12 @@ type MonadMempoolNormalization ssc ctx m
       )
 
 -- | Normalize mempool.
+--
+-- When normalizing the mempool after adding a block, the mempool lock
+-- must be acquired before the block is added, and it should only be
+-- relased after the mempool has been normalized.  Otherwise, we risk
+-- transactions not being verified because the local state is not
+-- self-consistent (See CSL-1533)
 normalizeMempool
     :: forall ssc ctx m . (MonadMempoolNormalization ssc ctx m)
     => m ()

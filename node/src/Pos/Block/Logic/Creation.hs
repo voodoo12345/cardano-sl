@@ -58,13 +58,15 @@ import           Pos.Ssc.Extra              (MonadSscMem, sscGetLocalPayload,
                                              sscResetLocal)
 import           Pos.Txp.Core               (TxAux (..), emptyTxPayload, mkTxPayload,
                                              topsortTxs)
-import           Pos.Txp.MemState           (MonadTxpMem, clearTxpMemPool, getLocalTxs)
+import           Pos.Txp.MemState           (MonadTxpMem
+                                            , clearTxpMemPool, getLocalTxs, withMemPoolLock)
 import           Pos.Update                 (UpdateContext)
 import           Pos.Update.Core            (UpdatePayload (..))
 import qualified Pos.Update.DB              as UDB
 import           Pos.Update.Logic           (clearUSMemPool, usCanCreateBlock,
                                              usPreparePayload)
 import           Pos.Util                   (maybeThrow, _neHead)
+import qualified Pos.Util.PrioLock          as PL (Priority (..))
 import           Pos.Util.Util              (leftToPanic)
 import           Pos.WorkMode.Class         (TxpExtra_TMP)
 
@@ -123,7 +125,8 @@ createGenesisBlockAndApply epoch =
         Left UnknownBlocksForLrc ->
             Nothing <$ logInfo "createGenesisBlock: not enough blocks for LRC"
         Left err -> throwM err
-        Right leaders -> withBlkSemaphore (createGenesisBlockDo epoch leaders)
+        Right leaders -> withMemPoolLock "txNormalize" PL.High $
+            withBlkSemaphore (createGenesisBlockDo epoch leaders)
 
 createGenesisBlockDo
     :: forall ssc ctx m.
@@ -192,7 +195,7 @@ createMainBlockAndApply ::
     => SlotId
     -> ProxySKBlockInfo
     -> m (Either Text (MainBlock ssc))
-createMainBlockAndApply sId pske =
+createMainBlockAndApply sId pske = withMemPoolLock "txNormalize" PL.High $
     reportingFatal $ withBlkSemaphore createAndApply
   where
     createAndApply tip =
@@ -326,7 +329,7 @@ applyCreatedBlock pske createdBlock = applyCreatedBlockDo False createdBlock
                 pure blockToApply
     clearMempools :: m ()
     clearMempools = do
-        clearTxpMemPool "fallback@applyCreatedBlock"
+        clearTxpMemPool
         sscResetLocal
         clearUSMemPool
         clearDlgMemPool

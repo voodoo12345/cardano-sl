@@ -22,6 +22,7 @@ import           System.Wlog                      (LoggerNameBox)
 import           Pos.Communication.Types.Protocol (PeerId)
 import           Pos.Core.Types                   (HeaderHash)
 import           Pos.Txp.Toil.Types               (MemPool, UndoMap, UtxoModifier)
+import           Pos.Util.PrioLock                (PrioLock)
 
 -- | LocalData of transactions processing.
 -- There are two invariants which must hold for local data
@@ -41,6 +42,7 @@ data GenericTxpLocalData extra = TxpLocalData
     , txpUndos        :: !(TVar UndoMap)
     , txpTip          :: !(TVar HeaderHash)
     , txpExtra        :: !(TVar extra)
+    , txpMemPoolLock  :: !PrioLock
     }
 
 -- | Pure version of GenericTxpLocalData.

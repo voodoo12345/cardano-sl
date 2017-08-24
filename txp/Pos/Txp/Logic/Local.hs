@@ -35,6 +35,7 @@ import           Pos.Txp.Toil                (GenericToilModifier (..),
                                               Utxo, execToilTLocal, normalizeToil,
                                               processTx, runDBToil, runToilTLocal,
                                               utxoGetReader)
+import qualified Pos.Util.PrioLock           as PL
 
 type TxpLocalWorkMode ctx m =
     ( MonadIO m
@@ -105,8 +106,9 @@ txProcessTransaction itw@(txId, txAux) = do
             }
     pRes <-
         lift $
-        modifyTxpLocalData "txProcessTransaction" $
-        processTxDo epoch ctx tipDB itw
+        modifyTxpLocalData "txProcessTransaction"
+            (processTxDo epoch ctx tipDB itw)
+            PL.Low
     case pRes of
         Left er -> do
             logDebug $ sformat ("Transaction processing failed: " %build) txId
@@ -148,10 +150,10 @@ txNormalize = getCurrentSlot >>= \case
     Nothing -> do
         tip <- GS.getTip
         -- Clear and update tip
-        setTxpLocalData "txNormalize" (mempty, def, mempty, tip, def)
+        setTxpLocalData (mempty, def, mempty, tip, def)
     Just (siEpoch -> epoch) -> do
         utxoTip <- GS.getTip
         localTxs <- getLocalTxs
         ToilModifier {..} <-
             runDBToil $ execToilTLocal mempty def mempty $ normalizeToil epoch localTxs
-        setTxpLocalData "txNormalize" (_tmUtxo, _tmMemPool, _tmUndos, utxoTip, _tmExtra)
+        setTxpLocalData (_tmUtxo, _tmMemPool, _tmUndos, utxoTip, _tmExtra)

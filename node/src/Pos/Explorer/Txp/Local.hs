@@ -38,6 +38,7 @@ import           Pos.Txp.Toil                (GenericToilModifier (..),
                                               utxoGetReader)
 import           Pos.Util.Chrono             (NewestFirst (..))
 import qualified Pos.Util.Modifier           as MM
+import qualified Pos.Util.PrioLock           as PL
 
 import           Pos.Explorer.Core           (TxExtra (..))
 import           Pos.Explorer.Txp.Toil       (ExplorerExtra, ExplorerExtraTxp (..),
@@ -133,8 +134,9 @@ eTxProcessTransaction itw@(txId, TxAux {taTx = UnsafeTx {..}}) = do
             }
     pRes <-
         lift $
-        modifyTxpLocalData "eTxProcessTransaction" $
-        processTxDo epoch ctx tipBefore itw curTime
+        modifyTxpLocalData "eTxProcessTransaction"
+            (processTxDo epoch ctx tipBefore itw curTime)
+            PL.Low
     case pRes of
         Left er -> do
             logDebug $ sformat ("Transaction processing failed: " %build) txId
@@ -191,7 +193,7 @@ eTxNormalize = getCurrentSlot >>= \case
     Nothing -> do
         tip <- GS.getTip
         -- Clear and update tip
-        setTxpLocalData "eTxNormalize" (mempty, def, mempty, tip, def)
+        setTxpLocalData (mempty, def, mempty, tip, def)
     Just (siEpoch -> epoch) -> do
         utxoTip <- GS.getTip
         localTxs <- getLocalTxsMap
@@ -202,4 +204,4 @@ eTxNormalize = getCurrentSlot >>= \case
             runDBToil $
             snd <$>
             runToilTLocalExtra mempty def mempty def (eNormalizeToil epoch toNormalize)
-        setTxpLocalData "eTxNormalize" (_tmUtxo, _tmMemPool, _tmUndos, utxoTip, _tmExtra)
+        setTxpLocalData (_tmUtxo, _tmMemPool, _tmUndos, utxoTip, _tmExtra)
