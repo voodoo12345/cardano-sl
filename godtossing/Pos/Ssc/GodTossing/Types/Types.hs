@@ -17,15 +17,17 @@ module Pos.Ssc.GodTossing.Types.Types
        , createGtContext
        ) where
 
+import           Universum
+
 import           Control.Lens                   (makeLenses)
 import           Data.Default                   (Default, def)
 import qualified Data.HashMap.Strict            as HM
 import qualified Data.Text                      as T
 import qualified Data.Text.Buildable
 import           Data.Text.Lazy.Builder         (Builder, fromText)
-import           Formatting                     (sformat, (%))
+import           Formatting                     (build, formatToString, sformat, (%))
+import qualified Prelude
 import           Serokell.Util                  (listJson)
-import           Universum
 
 import           Pos.Core                       (EpochIndex)
 import           Pos.Crypto                     (VssKeyPair)
@@ -50,7 +52,7 @@ data GtGlobalState = GtGlobalState
       -- | Vss certificates are added at any time if they are valid and
       -- received from stakeholders.
     , _gsVssCertificates :: !VCD.VssCertData
-    } deriving (Eq, Show, Generic)
+    } deriving (Eq, Generic)
 
 makeLenses ''GtGlobalState
 
@@ -96,6 +98,9 @@ instance Buildable GtGlobalState where
             formatIfNotNull
                 ("  certificates from: "%listJson%"\n")
                 (VCD.keys _gsVssCertificates)
+
+instance Show GtGlobalState where
+    show = formatToString build
 
 data GtParams = GtParams
     { gtpSscEnabled :: !Bool        -- ^ Whether node should participate in
