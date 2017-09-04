@@ -54,7 +54,7 @@ actionToMonad :: Toss.MonadToss m => TossAction -> m ()
 actionToMonad (PutCommitment sc)   = Toss.putCommitment sc
 actionToMonad (PutOpening sid o)   = Toss.putOpening sid o
 actionToMonad (PutShares sid ism)  = Toss.putShares sid ism
-actionToMonad (PutCertificate v)  = Toss.putCertificate v
+actionToMonad (PutCertificate v)   = Toss.putCertificate v
 actionToMonad ResetCO              = Toss.resetCO
 actionToMonad ResetShares          = Toss.resetShares
 actionToMonad (DelCommitment sid)  = Toss.delCommitment sid
@@ -66,10 +66,14 @@ emptyTossSt :: Toss.GtGlobalState
 emptyTossSt = def
 
 perform :: HasCoreConstants => [TossAction] -> Toss.PureToss ()
-perform = foldl (>>) (return ()) . map actionToMonad
+perform = mapM actionToMonad
 
+-- | Type synonym used for convenience. This quintuple is used to pass the randomness
+-- needed to run 'PureToss' actions to the testing property.
 type TossTestInfo = (Word64, Word64, Word64, Word64, Word64)
 
+-- | Operational equivalence operator in the 'PureToss' monad. To be used when
+-- equivalence between two sequences of actions in 'PureToss' is to be tested/proved.
 (==^) :: HasCoreConstants => [TossAction] -> [TossAction] -> TossTestInfo -> Property
 t1 ==^ t2 = \ttInfo ->
     forAll (arbitrary :: Gen [TossAction]) $ \prefix ->
