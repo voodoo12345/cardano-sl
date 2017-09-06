@@ -3565,10 +3565,8 @@ self: {
       happy = callPackage ({ Cabal, array, base, containers, directory, filepath, mkDerivation, mtl, stdenv }:
       mkDerivation {
           pname = "happy";
-          version = "1.19.5";
-          sha256 = "1nj353q4z1g186fpjzf0dnsg71qhxqpamx8jy89rjjvv3p0kmw32";
-          revision = "2";
-          editedCabalFile = "1dvhv94lzmya938i5crshg9qbx7dxvkyxkhfbqimxkydxn7l2w7w";
+          version = "1.19.7";
+          sha256 = "16vg292pp12wnkny7znsv7bichh9ghny7swl7v55qafmcfg2lcdv";
           isLibrary = false;
           isExecutable = true;
           setupHaskellDepends = [
@@ -3585,9 +3583,9 @@ self: {
           ];
           doHaddock = false;
           doCheck = false;
-          homepage = "http://www.haskell.org/happy/";
+          homepage = "https://www.haskell.org/happy/";
           description = "Happy is a parser generator for Haskell";
-          license = stdenv.lib.licenses.bsd3;
+          license = stdenv.lib.licenses.bsd2;
         }) {};
       hashable = callPackage ({ base, bytestring, deepseq, ghc-prim, integer-gmp, mkDerivation, stdenv, text }:
       mkDerivation {
@@ -7137,6 +7135,8 @@ self: {
           pname = "vector-binary-instances";
           version = "0.2.3.5";
           sha256 = "0niad09lbxz3cj20qllyj92lwbc013ihw4lby8fv07x5xjx5a4p1";
+          revision = "1";
+          editedCabalFile = "0yk61mifvcc31vancsfsd0vskqh5k3a3znx1rbz8wzcs4ijjzh48";
           libraryHaskellDepends = [
             base
             binary
