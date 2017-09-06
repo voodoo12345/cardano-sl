@@ -66,7 +66,7 @@ emptyTossSt :: Toss.GtGlobalState
 emptyTossSt = def
 
 perform :: HasCoreConstants => [TossAction] -> Toss.PureToss ()
-perform = mapM actionToMonad
+perform = mapM_ actionToMonad
 
 -- | Type synonym used for convenience. This quintuple is used to pass the randomness
 -- needed to run 'PureToss' actions to the testing property.
