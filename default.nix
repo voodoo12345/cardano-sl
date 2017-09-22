@@ -82,7 +82,53 @@ let
       });
     };
   });
+  dockerImage = let
+    DOMAIN = "aws.iohk.io";
+    topologyFile = pkgs.writeText "topology.yaml" ''
+      wallet:
+        relays:
+          [
+            [
+              { host: cardano-node-0.${DOMAIN}, port: 3000 },
+              { host: cardano-node-1.${DOMAIN}, port: 3000 },
+              { host: cardano-node-2.${DOMAIN}, port: 3000 },
+              { host: cardano-node-3.${DOMAIN}, port: 3000 },
+              { host: cardano-node-4.${DOMAIN}, port: 3000 },
+              { host: cardano-node-5.${DOMAIN}, port: 3000 },
+              { host: cardano-node-6.${DOMAIN}, port: 3000 }
+            ]
+          ]
+        valency: 1
+        fallbacks: 7
+    '';
+    CLUSTER = "testnet-1.0";
+    SYSTEM_START_TIME = 1504820421;
+  in pkgs.dockerTools.buildImage {
+    name = "cardano-container-${CLUSTER}";
+    contents = cardanoPkgs.cardano-sl-static;
+    config = {
+      Cmd = [
+        "${cardanoPkgs.cardano-sl-wallet}/bin/cardano-node"
+        "--tlscert" "${cardanoPkgs.cardano-sl.src}/../scripts/tls-files/server.crt"
+        "--tlskey" "${cardanoPkgs.cardano-sl.src}/../scripts/tls-files/server.key"
+        "--tlsca" "${cardanoPkgs.cardano-sl.src}/../scripts/tls-files/ca.crt"
+        "--no-ntp"
+        "--topology" "${topologyFile}"
+        "--log-config" "${cardanoPkgs.cardano-sl.src}/../scripts/log-config-qa.yaml"
+        "--logs-prefix" "logs/${CLUSTER}"
+        "--db-path" "db-${CLUSTER}"
+        "--wallet-db-path" "wdb-${CLUSTER}"
+        "--configuration-file" "${cardanoPkgs.cardano-sl.src}/configuration.yaml"
+        "--configuration-key" "mainnet_wallet_macos64"
+        "--system-start" (toString SYSTEM_START_TIME)
+      ];
+      ExposedPorts = {
+        "3000/tcp" = {};
+      };
+    };
+  };
   upstream = {
+    inherit dockerImage;
     stack2nix = import (pkgs.fetchFromGitHub {
       owner = "input-output-hk";
       repo = "stack2nix";
