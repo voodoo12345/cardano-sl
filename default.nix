@@ -101,7 +101,7 @@ let
         valency: 1
         fallbacks: 7
     '';
-    CLUSTER = "testnet-1.0";
+    CLUSTER = "testnet-0.6";
     SYSTEM_START_TIME = 1504820421;
   in pkgs.dockerTools.buildImage {
     name = "cardano-container-${CLUSTER}";
@@ -114,7 +114,7 @@ let
         "--tlsca" "${cardanoPkgs.cardano-sl.src}/../scripts/tls-files/ca.crt"
         "--no-ntp"
         "--topology" "${topologyFile}"
-        "--log-config" "${cardanoPkgs.cardano-sl.src}/../scripts/log-config-qa.yaml"
+        "--log-config" "${cardanoPkgs.cardano-sl.src}/../scripts/log-templates/log-config-qa.yaml"
         "--logs-prefix" "logs/${CLUSTER}"
         "--db-path" "db-${CLUSTER}"
         "--wallet-db-path" "wdb-${CLUSTER}"
